@@ -5,12 +5,12 @@ import { Download, Briefcase, GraduationCap, Award } from "lucide-react";
 export const Route = createFileRoute("/resume")({
   head: () => ({
     meta: [
-      { title: "Resume — Your Name" },
+      { title: "Resume — Mihraj" },
       {
         name: "description",
-        content: "Experience, education, and certifications of Your Name.",
+        content: "Experience, education, and certifications of Mihraj.",
       },
-      { property: "og:title", content: "Resume — Your Name" },
+      { property: "og:title", content: "Resume — Mihraj" },
       {
         property: "og:description",
         content: "Work history, education, and credentials.",

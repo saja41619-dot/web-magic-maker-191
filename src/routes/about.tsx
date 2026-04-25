@@ -5,12 +5,12 @@ import { Coffee, MapPin, Globe, Heart } from "lucide-react";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About — Your Name" },
+      { title: "About — Mihraj" },
       {
         name: "description",
-        content: "Learn more about Your Name — a freelance designer and developer.",
+        content: "Learn more about Mihraj — a freelance designer and developer.",
       },
-      { property: "og:title", content: "About — Your Name" },
+      { property: "og:title", content: "About — Mihraj" },
       {
         property: "og:description",
         content: "A freelance designer and developer's story, approach, and values.",
@@ -35,7 +35,7 @@ function AboutPage() {
           <div className="relative mx-auto h-48 w-48 md:h-full md:w-full md:max-w-xs">
             <div className="absolute inset-0 rounded-3xl bg-gradient-primary opacity-30 blur-2xl" />
             <div className="relative flex h-full w-full items-center justify-center rounded-3xl border border-border bg-card font-display text-6xl font-bold text-gradient shadow-elegant">
-              YN
+              M
             </div>
           </div>
           <div>
@@ -46,7 +46,7 @@ function AboutPage() {
               Designer, developer, <span className="text-gradient">problem-solver</span>.
             </h1>
             <p className="mt-5 text-muted-foreground">
-              I'm Your Name — a freelance designer and developer with X+ years of experience
+              I'm Mihraj — a freelance designer and developer with 6+ years of experience
               helping brands and startups ship beautiful, functional products. I believe great
               software is invisible: it just works, and it feels right.
             </p>

@@ -5,12 +5,12 @@ import { ArrowUpRight } from "lucide-react";
 export const Route = createFileRoute("/work")({
   head: () => ({
     meta: [
-      { title: "Work — Your Name" },
+      { title: "Work — Mihraj" },
       {
         name: "description",
-        content: "Selected projects and skills by Your Name — freelance designer and developer.",
+        content: "Selected projects and skills by Mihraj — freelance designer and developer.",
       },
-      { property: "og:title", content: "Work — Your Name" },
+      { property: "og:title", content: "Work — Mihraj" },
       {
         property: "og:description",
         content: "Selected freelance projects across web, mobile, and brand.",

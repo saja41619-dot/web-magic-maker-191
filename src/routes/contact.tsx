@@ -6,12 +6,12 @@ import { useState, type FormEvent } from "react";
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact — Your Name" },
+      { title: "Contact — Mihraj" },
       {
         name: "description",
-        content: "Get in touch with Your Name about your next project.",
+        content: "Get in touch with Mihraj about your next project.",
       },
-      { property: "og:title", content: "Contact — Your Name" },
+      { property: "og:title", content: "Contact — Mihraj" },
       {
         property: "og:description",
         content: "Reach out by email, phone, or contact form for freelance project inquiries.",
