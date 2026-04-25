@@ -177,7 +177,7 @@ function WorkPage() {
               value={q}
               onChange={(e) =>
                 navigate({
-                  search: (prev) => ({ ...prev, q: e.target.value }),
+                  search: (prev: { q: string }) => ({ ...prev, q: e.target.value }),
                   replace: true,
                 })
               }
@@ -190,7 +190,7 @@ function WorkPage() {
                 type="button"
                 onClick={() =>
                   navigate({
-                    search: (prev) => ({ ...prev, q: "" }),
+                    search: (prev: { q: string }) => ({ ...prev, q: "" }),
                     replace: true,
                   })
                 }
