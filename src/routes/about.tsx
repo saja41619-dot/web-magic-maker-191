@@ -5,37 +5,15 @@ import { Coffee, MapPin, Globe, Heart } from "lucide-react";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "About — Your Name" },
+      { title: "About — Mihraj" },
       {
         name: "description",
-        content: "Learn more about Your Name — a freelance designer and developer.",
+        content: "Learn more about Mihraj — a freelance designer and developer.",
       },
-      { property: "og:title", content: "About — Your Name" },
-      {
-        property: "og:description",
-        content: "A freelance designer and developer's story, approach, and values.",
-      },
-    ],
-  }),
-  component: AboutPage,
-});
-
-const facts = [
-  { Icon: MapPin, label: "Based in", value: "Your City" },
-  { Icon: Coffee, label: "Fueled by", value: "Coffee & curiosity" },
-  { Icon: Globe, label: "Available", value: "Worldwide, remote" },
-  { Icon: Heart, label: "Loves", value: "Clean design & code" },
-];
-
-function AboutPage() {
-  return (
-    <Layout>
-      <section className="mx-auto max-w-4xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
-        <div className="grid items-center gap-10 md:grid-cols-[1fr_2fr]">
-          <div className="relative mx-auto h-48 w-48 md:h-full md:w-full md:max-w-xs">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-primary opacity-30 blur-2xl" />
+      { property: "og:title", content: "About — Mihraj" },
+...
             <div className="relative flex h-full w-full items-center justify-center rounded-3xl border border-border bg-card font-display text-6xl font-bold text-gradient shadow-elegant">
-              YN
+              M
             </div>
           </div>
           <div>
@@ -46,7 +24,7 @@ function AboutPage() {
               Designer, developer, <span className="text-gradient">problem-solver</span>.
             </h1>
             <p className="mt-5 text-muted-foreground">
-              I'm Your Name — a freelance designer and developer with X+ years of experience
+              I'm Mihraj — a freelance designer and developer with 6+ years of experience
               helping brands and startups ship beautiful, functional products. I believe great
               software is invisible: it just works, and it feels right.
             </p>
