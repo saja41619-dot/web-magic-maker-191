@@ -22,16 +22,62 @@ export const Route = createFileRoute("/work")({
 
 const skillGroups = [
   {
-    title: "Design",
-    skills: ["UI/UX Design", "Branding", "Design Systems", "Prototyping", "Figma"],
+    title: "Offensive Security",
+    skills: [
+      "Penetration Testing",
+      "Vulnerability Assessment",
+      "Web App Pentesting (OWASP Top 10)",
+      "Network Pentesting",
+      "Privilege Escalation",
+      "Exploit Development",
+      "Social Engineering",
+    ],
   },
   {
-    title: "Development",
-    skills: ["React", "TypeScript", "Tailwind CSS", "Next.js", "Node.js"],
+    title: "Tools & Frameworks",
+    skills: [
+      "Kali Linux",
+      "Metasploit",
+      "Burp Suite",
+      "Nmap",
+      "Wireshark",
+      "Nessus",
+      "Nikto",
+      "sqlmap",
+      "John the Ripper",
+      "Hashcat",
+      "Hydra",
+    ],
   },
   {
-    title: "Tools",
-    skills: ["Git", "Vite", "Framer", "Webflow", "Notion"],
+    title: "Networking & Systems",
+    skills: [
+      "TCP/IP",
+      "DNS / HTTP / TLS",
+      "Linux Administration",
+      "Active Directory",
+      "Firewalls & IDS/IPS",
+      "VPN & Proxies",
+    ],
+  },
+  {
+    title: "Scripting & Dev",
+    skills: ["Python", "Bash", "PowerShell", "JavaScript", "Git", "REST APIs"],
+  },
+  {
+    title: "Defensive & Recon",
+    skills: [
+      "OSINT",
+      "Threat Modeling",
+      "Log Analysis",
+      "SIEM Basics",
+      "Incident Response",
+      "Hardening & Patching",
+    ],
+  },
+  {
+    title: "Certifications & Learning",
+    skills: ["CEH (in progress)", "TryHackMe", "Hack The Box", "OWASP", "PortSwigger Academy"],
   },
 ];
 
