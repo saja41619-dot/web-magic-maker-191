@@ -5,13 +5,13 @@ import { ArrowRight, Sparkles, Code2, Palette, Rocket } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your Name — Freelance Designer & Developer" },
+      { title: "Mihraj — Freelance Designer & Developer" },
       {
         name: "description",
         content:
           "Freelance designer and developer building modern, performant digital products for ambitious brands.",
       },
-      { property: "og:title", content: "Your Name — Freelance Designer & Developer" },
+      { property: "og:title", content: "Mihraj — Freelance Designer & Developer" },
       {
         property: "og:description",
         content: "Modern, performant digital products for ambitious brands.",
@@ -57,7 +57,7 @@ function HomePage() {
               Available for freelance work
             </div>
             <h1 className="mt-6 font-display text-5xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
-              Hi, I'm <span className="text-gradient">Your Name</span>
+              Hi, I'm <span className="text-gradient">Mihraj</span>
               <br />a freelance creator.
             </h1>
             <p className="mx-auto mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">
