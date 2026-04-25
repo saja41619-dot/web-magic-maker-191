@@ -1,9 +1,168 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Layout } from "@/components/site/Layout";
 import { ArrowUpRight, Search, X } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type SkillInfo = { what: string; why: string };
+
+const skillInfo: Record<string, SkillInfo> = {
+  // Design
+  "UI/UX Design": {
+    what: "Designing interfaces and user flows that are clear, accessible, and pleasant to use.",
+    why: "It's the foundation of every product I build — good UX makes the rest of the work matter.",
+  },
+  "Branding": {
+    what: "Crafting a visual identity: logo, colour, type, and tone of voice.",
+    why: "A consistent brand makes products feel trustworthy and memorable.",
+  },
+  "Design Systems": {
+    what: "Reusable component libraries with shared tokens for colour, spacing, and type.",
+    why: "They let teams ship faster while keeping the UI consistent.",
+  },
+  "Prototyping": {
+    what: "Building interactive mockups to validate ideas before writing production code.",
+    why: "Cheaper to iterate on a prototype than to rebuild a shipped feature.",
+  },
+  "Figma": {
+    what: "My main design tool for UI, prototypes, and design systems.",
+    why: "Real-time collaboration and a strong component model.",
+  },
+  // Development
+  "React": {
+    what: "A component-based JavaScript library for building user interfaces.",
+    why: "Huge ecosystem and a mental model that scales from tiny widgets to full apps.",
+  },
+  "TypeScript": {
+    what: "JavaScript with a static type system.",
+    why: "Catches bugs before runtime and makes large codebases far easier to refactor.",
+  },
+  "Tailwind CSS": {
+    what: "A utility-first CSS framework for styling directly in markup.",
+    why: "Fast to write, consistent by default, and trivial to theme.",
+  },
+  "Next.js": {
+    what: "A React framework with routing, SSR, and great DX out of the box.",
+    why: "Best-in-class for production websites and full-stack apps.",
+  },
+  "Node.js": {
+    what: "A JavaScript runtime for servers, scripts, and tooling.",
+    why: "Lets me share language and types between frontend and backend.",
+  },
+  // Tools
+  "Git": {
+    what: "Distributed version control for tracking and collaborating on code.",
+    why: "Non-negotiable for any serious project.",
+  },
+  "Vite": {
+    what: "A modern build tool with fast dev server and optimised production builds.",
+    why: "Near-instant HMR makes the feedback loop a joy.",
+  },
+  "Framer": {
+    what: "A design + publishing tool for interactive marketing sites.",
+    why: "Great for high-fidelity motion-rich landing pages.",
+  },
+  "Webflow": {
+    what: "A visual builder for content-driven marketing websites with a CMS.",
+    why: "Lets non-developers update content without touching code.",
+  },
+  "Notion": {
+    what: "Docs, wikis, and project tracking in one place.",
+    why: "Keeps client work organised and shareable.",
+  },
+  // Offensive Security
+  "Penetration Testing": {
+    what: "Simulating real attacks on a system to find exploitable weaknesses.",
+    why: "It's the most effective way to know whether defences actually hold up.",
+  },
+  "Vulnerability Assessment": {
+    what: "Scanning and reviewing systems to catalogue known weaknesses.",
+    why: "Gives a prioritised baseline of risk before going deeper.",
+  },
+  "Web App Pentesting (OWASP Top 10)": {
+    what: "Testing for the most common and impactful web vulnerabilities.",
+    why: "Most real-world breaches still trace back to the OWASP Top 10.",
+  },
+  "Network Pentesting": {
+    what: "Probing networks for exposed services, weak configs, and lateral-movement paths.",
+    why: "One weak host can compromise an entire environment.",
+  },
+  "Privilege Escalation": {
+    what: "Turning a low-privilege foothold into admin/root access.",
+    why: "Demonstrates the real impact of an initial vulnerability.",
+  },
+  "Social Engineering": {
+    what: "Testing the human layer — phishing, pretexting, and awareness.",
+    why: "People are usually the easiest path in; testing this hardens the org.",
+  },
+  // Security Tools
+  "Kali Linux": {
+    what: "A Linux distribution preloaded with offensive-security tooling.",
+    why: "My go-to working environment for engagements.",
+  },
+  "Metasploit": {
+    what: "An exploitation framework with a huge library of modules and payloads.",
+    why: "Fast to validate exploitability and demonstrate impact.",
+  },
+  "Burp Suite": {
+    what: "An intercepting proxy and toolkit for web app testing.",
+    why: "The standard tool for hands-on web pentesting.",
+  },
+  "Nmap": {
+    what: "A network scanner for host discovery, port scanning, and service detection.",
+    why: "Almost every engagement starts with Nmap.",
+  },
+  "Wireshark": {
+    what: "A packet analyser for inspecting network traffic in detail.",
+    why: "Invaluable for debugging protocols and spotting suspicious traffic.",
+  },
+  "sqlmap": {
+    what: "Automates detection and exploitation of SQL-injection flaws.",
+    why: "Quickly proves impact when SQLi is present.",
+  },
+  "Hashcat": {
+    what: "A high-performance password-cracking tool.",
+    why: "Tests password strength and validates hashing choices.",
+  },
+  "Hydra": {
+    what: "A fast online brute-force tool for many protocols.",
+    why: "Useful for testing authentication endpoints and weak credentials.",
+  },
+  // Networking & Recon
+  "TCP/IP": {
+    what: "The core protocol suite that the internet runs on.",
+    why: "Understanding it is essential for both building and breaking systems.",
+  },
+  "DNS / HTTP / TLS": {
+    what: "The protocols behind names, web traffic, and encryption.",
+    why: "Most web vulnerabilities live somewhere in this stack.",
+  },
+  "Linux Administration": {
+    what: "Managing Linux servers, users, services, and permissions.",
+    why: "Most production servers — and most targets — run Linux.",
+  },
+  "Active Directory": {
+    what: "Microsoft's identity and access service for Windows networks.",
+    why: "Enterprise environments live or die by AD security.",
+  },
+  "OSINT": {
+    what: "Gathering intel from public sources before an engagement.",
+    why: "Free, legal, and surprisingly effective reconnaissance.",
+  },
+  "Log Analysis": {
+    what: "Reviewing system and application logs for anomalies and incidents.",
+    why: "Logs are where attacks are detected — and proven.",
+  },
+};
+
 
 const workSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
