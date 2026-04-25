@@ -29,9 +29,9 @@ const contactItems = [
 ];
 
 const socials = [
-  { Icon: Github, href: "#", label: "GitHub" },
-  { Icon: Linkedin, href: "#", label: "LinkedIn" },
-  { Icon: Twitter, href: "#", label: "Twitter" },
+  { Icon: Mail, href: "mailto:mihraj@gmail.com", label: "Email" },
+  { Icon: MessageCircle, href: "https://wa.me/919792313786", label: "WhatsApp" },
+  { Icon: Instagram, href: "https://instagram.com/", label: "Instagram" },
 ];
 
 function ContactPage() {
