@@ -22,9 +22,9 @@ export const Route = createFileRoute("/contact")({
 });
 
 const contactItems = [
-  { Icon: Mail, label: "Email", value: "hello@yourname.com" },
-  { Icon: Phone, label: "Phone", value: "+1 (555) 000-0000" },
-  { Icon: MapPin, label: "Location", value: "Your City, Country" },
+  { Icon: Mail, label: "Email", value: "mihraj@gmail.com" },
+  { Icon: Phone, label: "Phone", value: "+91 9792 313 786" },
+  { Icon: MapPin, label: "Location", value: "Kannur, India" },
 ];
 
 const socials = [
