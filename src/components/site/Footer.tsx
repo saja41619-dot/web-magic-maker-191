@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Github, Linkedin, Twitter, Mail } from "lucide-react";
+import { Mail, MessageCircle, Instagram } from "lucide-react";
 
 export function Footer() {
   return (
