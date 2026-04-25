@@ -177,7 +177,7 @@ function WorkPage() {
               value={q}
               onChange={(e) =>
                 navigate({
-                  search: (prev: { q: string }) => ({ ...prev, q: e.target.value }),
+                  search: { q: e.target.value },
                   replace: true,
                 })
               }
