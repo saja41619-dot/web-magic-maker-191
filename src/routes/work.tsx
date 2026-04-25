@@ -380,11 +380,14 @@ function WorkPage() {
                 </h3>
                 <ul className="mt-4 flex flex-wrap gap-2">
                   {g.skills.map((s) => (
-                    <li
-                      key={s}
-                      className="rounded-md border border-border bg-secondary/50 px-3 py-1 text-xs font-medium"
-                    >
-                      {highlight(s)}
+                    <li key={s}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSkill(s)}
+                        className="rounded-md border border-border bg-secondary/50 px-3 py-1 text-xs font-medium transition-smooth hover:border-primary hover:bg-secondary hover:text-primary"
+                      >
+                        {highlight(s)}
+                      </button>
                     </li>
                   ))}
                 </ul>
