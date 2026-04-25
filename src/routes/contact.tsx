@@ -36,6 +36,18 @@ const socials = [
 
 function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
+
+  const handleCopy = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedLabel(label);
+      toast.success(`${label} copied to clipboard`);
+      setTimeout(() => setCopiedLabel((curr) => (curr === label ? null : curr)), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
