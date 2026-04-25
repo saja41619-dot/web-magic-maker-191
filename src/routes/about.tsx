@@ -11,7 +11,29 @@ export const Route = createFileRoute("/about")({
         content: "Learn more about Mihraj — a freelance designer and developer.",
       },
       { property: "og:title", content: "About — Mihraj" },
-...
+      {
+        property: "og:description",
+        content: "A freelance designer and developer's story, approach, and values.",
+      },
+    ],
+  }),
+  component: AboutPage,
+});
+
+const facts = [
+  { Icon: MapPin, label: "Based in", value: "Your City" },
+  { Icon: Coffee, label: "Fueled by", value: "Coffee & curiosity" },
+  { Icon: Globe, label: "Available", value: "Worldwide, remote" },
+  { Icon: Heart, label: "Loves", value: "Clean design & code" },
+];
+
+function AboutPage() {
+  return (
+    <Layout>
+      <section className="mx-auto max-w-4xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
+        <div className="grid items-center gap-10 md:grid-cols-[1fr_2fr]">
+          <div className="relative mx-auto h-48 w-48 md:h-full md:w-full md:max-w-xs">
+            <div className="absolute inset-0 rounded-3xl bg-gradient-primary opacity-30 blur-2xl" />
             <div className="relative flex h-full w-full items-center justify-center rounded-3xl border border-border bg-card font-display text-6xl font-bold text-gradient shadow-elegant">
               M
             </div>
