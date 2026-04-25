@@ -33,6 +33,41 @@ const skillGroups = [
     title: "Tools",
     skills: ["Git", "Vite", "Framer", "Webflow", "Notion"],
   },
+  {
+    title: "Offensive Security",
+    skills: [
+      "Penetration Testing",
+      "Vulnerability Assessment",
+      "Web App Pentesting (OWASP Top 10)",
+      "Network Pentesting",
+      "Privilege Escalation",
+      "Social Engineering",
+    ],
+  },
+  {
+    title: "Security Tools",
+    skills: [
+      "Kali Linux",
+      "Metasploit",
+      "Burp Suite",
+      "Nmap",
+      "Wireshark",
+      "sqlmap",
+      "Hashcat",
+      "Hydra",
+    ],
+  },
+  {
+    title: "Networking & Recon",
+    skills: [
+      "TCP/IP",
+      "DNS / HTTP / TLS",
+      "Linux Administration",
+      "Active Directory",
+      "OSINT",
+      "Log Analysis",
+    ],
+  },
 ];
 
 const projects = [
