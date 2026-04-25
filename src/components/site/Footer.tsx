@@ -37,10 +37,9 @@ export function Footer() {
           <h4 className="text-sm font-semibold text-foreground">Connect</h4>
           <div className="mt-3 flex gap-3">
             {[
-              { Icon: Github, href: "#", label: "GitHub" },
-              { Icon: Linkedin, href: "#", label: "LinkedIn" },
-              { Icon: Twitter, href: "#", label: "Twitter" },
               { Icon: Mail, href: "mailto:mihraj@gmail.com", label: "Email" },
+              { Icon: MessageCircle, href: "https://wa.me/919792313786", label: "WhatsApp" },
+              { Icon: Instagram, href: "https://instagram.com/", label: "Instagram" },
             ].map(({ Icon, href, label }) => (
               <a
                 key={label}
