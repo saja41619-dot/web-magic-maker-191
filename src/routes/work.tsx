@@ -190,7 +190,7 @@ function WorkPage() {
                 type="button"
                 onClick={() =>
                   navigate({
-                    search: (prev: { q: string }) => ({ ...prev, q: "" }),
+                    search: { q: "" },
                     replace: true,
                   })
                 }
