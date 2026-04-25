@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Layout } from "@/components/site/Layout";
-import { Mail, Phone, MapPin, Github, Linkedin, Twitter, Send } from "lucide-react";
+import { Mail, Phone, MapPin, Github, Linkedin, Twitter, Send, Copy, Check } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -35,6 +36,18 @@ const socials = [
 
 function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
+
+  const handleCopy = async (label: string, value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedLabel(label);
+      toast.success(`${label} copied to clipboard`);
+      setTimeout(() => setCopiedLabel((curr) => (curr === label ? null : curr)), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -63,22 +76,37 @@ function ContactPage() {
         <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
           {/* Info */}
           <div className="space-y-4">
-            {contactItems.map(({ Icon, label, value }) => (
-              <div
-                key={label}
-                className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 transition-smooth hover:border-primary/50"
-              >
-                <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-primary text-primary-foreground shadow-glow">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground">
-                    {label}
+            {contactItems.map(({ Icon, label, value }) => {
+              const isCopied = copiedLabel === label;
+              return (
+                <div
+                  key={label}
+                  className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 transition-smooth hover:border-primary/50"
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-primary text-primary-foreground shadow-glow">
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <div className="font-semibold">{value}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                      {label}
+                    </div>
+                    <div className="truncate font-semibold">{value}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(label, value)}
+                    aria-label={`Copy ${label.toLowerCase()}`}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground transition-smooth hover:border-primary hover:text-primary"
+                  >
+                    {isCopied ? (
+                      <Check className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div className="rounded-2xl border border-border bg-card p-5">
               <div className="text-xs uppercase tracking-wider text-muted-foreground">
