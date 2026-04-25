@@ -1,8 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Layout } from "@/components/site/Layout";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Search, X } from "lucide-react";
+import { useMemo } from "react";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
+
+const workSearchSchema = z.object({
+  q: fallback(z.string(), "").default(""),
+});
 
 export const Route = createFileRoute("/work")({
+  validateSearch: zodValidator(workSearchSchema),
   head: () => ({
     meta: [
       { title: "Work — Mihraj" },
