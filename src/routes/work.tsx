@@ -438,6 +438,33 @@ function WorkPage() {
           ))}
         </div>
       </section>
+
+      <Dialog open={activeSkill !== null} onOpenChange={(open) => !open && setActiveSkill(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{activeSkill}</DialogTitle>
+            {activeSkill && skillInfo[activeSkill] ? (
+              <DialogDescription className="pt-2">
+                {skillInfo[activeSkill].what}
+              </DialogDescription>
+            ) : (
+              <DialogDescription className="pt-2">
+                A core part of my toolkit — details coming soon.
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {activeSkill && skillInfo[activeSkill] && (
+            <div className="mt-2 rounded-lg border border-border bg-secondary/40 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Why I use it
+              </div>
+              <p className="mt-1 text-sm text-foreground">
+                {skillInfo[activeSkill].why}
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
