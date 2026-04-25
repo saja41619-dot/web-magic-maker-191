@@ -279,6 +279,7 @@ const projects = [
 function WorkPage() {
   const { q } = Route.useSearch();
   const navigate = useNavigate({ from: "/work" });
+  const [activeSkill, setActiveSkill] = useState<string | null>(null);
 
   const query = q.trim().toLowerCase();
 
