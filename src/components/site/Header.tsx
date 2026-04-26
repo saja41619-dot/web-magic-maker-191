@@ -55,6 +55,7 @@ export function Header() {
             <Link
               key={item.to}
               to={item.to}
+              onClick={item.to === "/" ? handleHomeClick : undefined}
               activeOptions={{ exact: item.to === "/" }}
               activeProps={{ className: "text-foreground bg-secondary" }}
               inactiveProps={{ className: "text-muted-foreground hover:text-foreground" }}
