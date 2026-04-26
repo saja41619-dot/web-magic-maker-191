@@ -1,8 +1,5 @@
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider } from "@/lib/auth";
 
 import appCss from "../styles.css?url";
 
@@ -36,6 +33,14 @@ export const Route = createRootRoute({
       { name: "author", content: "Mihraj" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { title: "Mihraj" },
+      { property: "og:title", content: "Mihraj" },
+      { name: "twitter:title", content: "Mihraj" },
+      { name: "description", content: "A freelance website builder with a dark theme, featuring multiple pages and a responsive header." },
+      { property: "og:description", content: "A freelance website builder with a dark theme, featuring multiple pages and a responsive header." },
+      { name: "twitter:description", content: "A freelance website builder with a dark theme, featuring multiple pages and a responsive header." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3aac422e-020c-4a43-9243-eaf9f8d84bac/id-preview-c9dcf5b9--8d121f1b-ce25-457b-b04f-bba9aa85709d.lovable.app-1777175721919.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3aac422e-020c-4a43-9243-eaf9f8d84bac/id-preview-c9dcf5b9--8d121f1b-ce25-457b-b04f-bba9aa85709d.lovable.app-1777175721919.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -67,13 +72,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
-  const [queryClient] = useState(() => new QueryClient());
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Outlet />
-        <Toaster />
-      </AuthProvider>
-    </QueryClientProvider>
+    <>
+      <Outlet />
+      <Toaster />
+    </>
   );
 }
