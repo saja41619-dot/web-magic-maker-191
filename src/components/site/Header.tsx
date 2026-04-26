@@ -91,9 +91,9 @@ export function Header() {
       </div>
 
       {open && (
-        <div className="border-t border-border/40 bg-background/95 backdrop-blur-xl md:hidden">
+        <div className="animate-fade-in border-t border-border/40 bg-background/95 backdrop-blur-xl md:hidden">
           <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4">
-            {navItems.map((item) => (
+            {navItems.map((item, i) => (
               <Link
                 key={item.to}
                 to={item.to}
@@ -106,7 +106,8 @@ export function Header() {
                 activeOptions={{ exact: item.to === "/" }}
                 activeProps={{ className: "text-foreground bg-secondary" }}
                 inactiveProps={{ className: "text-muted-foreground" }}
-                className="rounded-md px-4 py-3 text-base font-medium transition-smooth hover:bg-secondary/60"
+                style={{ animationDelay: `${i * 40}ms` }}
+                className="animate-fade-in rounded-md px-4 py-3 text-base font-medium transition-smooth hover:translate-x-1 hover:bg-secondary/60"
               >
                 {item.label}
               </Link>
@@ -114,7 +115,7 @@ export function Header() {
             <Link
               to="/contact"
               onClick={() => setOpen(false)}
-              className="mt-2 rounded-md bg-gradient-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground shadow-glow"
+              className="mt-2 rounded-md bg-gradient-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:opacity-90"
             >
               Hire Me
             </Link>
