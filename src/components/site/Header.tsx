@@ -36,7 +36,11 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold">
+        <Link
+          to="/"
+          onClick={handleHomeClick}
+          className="flex items-center gap-2 font-display text-lg font-bold"
+        >
           <img
             src={photo}
             alt={name}
