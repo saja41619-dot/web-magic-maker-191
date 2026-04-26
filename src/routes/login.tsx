@@ -29,7 +29,7 @@ const credSchema = z.object({
 
 const emailSchema = z.string().trim().email("Enter a valid email").max(255);
 
-type Mode = "signin" | "signup" | "forgot";
+type Mode = "signin" | "forgot";
 
 function LoginPage() {
   const { signIn, isAuthenticated, loading } = useAuth();
