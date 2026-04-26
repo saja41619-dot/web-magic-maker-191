@@ -1,12 +1,18 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { z } from "zod";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+const loginSearchSchema = z.object({
+  redirect: fallback(z.string(), "/admin").default("/admin"),
+});
+
 export const Route = createFileRoute("/login")({
+  validateSearch: zodValidator(loginSearchSchema),
   head: () => ({
     meta: [
       { title: "Sign in — Mihraj Admin" },
@@ -23,6 +29,7 @@ const credSchema = z.object({
 
 function LoginPage() {
   const { signIn, isAuthenticated, loading } = useAuth();
+  const { redirect } = Route.useSearch();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -30,9 +37,11 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!loading && isAuthenticated) {
-    void navigate({ to: "/admin" });
-  }
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      void navigate({ to: redirect, replace: true });
+    }
+  }, [loading, isAuthenticated, navigate, redirect]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -53,10 +62,10 @@ function LoginPage() {
         if (err) throw err;
         toast.success("Account created! Signing you in...");
         await signIn(parsed.data.email, parsed.data.password);
-        void navigate({ to: "/admin" });
+        void navigate({ to: redirect, replace: true });
       } else {
         await signIn(parsed.data.email, parsed.data.password);
-        void navigate({ to: "/admin" });
+        void navigate({ to: redirect, replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");

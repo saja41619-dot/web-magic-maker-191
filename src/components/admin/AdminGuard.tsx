@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
+import { RequireAuth } from "@/components/auth/RequireAuth";
 import {
   LayoutDashboard,
   Mail,
@@ -9,7 +10,6 @@ import {
   Settings,
   LogOut,
   ExternalLink,
-  Loader2,
 } from "lucide-react";
 
 const navItems = [
@@ -21,43 +21,12 @@ const navItems = [
 ] as const;
 
 export function AdminGuard({ children }: { children: ReactNode }) {
-  const { loading, isAuthenticated, isAdmin } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    void navigate({ to: "/login" });
-    return null;
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="max-w-md rounded-2xl border border-border bg-card p-8 text-center shadow-elegant">
-          <h1 className="font-display text-2xl font-bold">Not authorized</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Your account doesn't have admin access.
-          </p>
-          <Link
-            to="/"
-            className="mt-6 inline-flex items-center justify-center rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
-          >
-            Go home
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  return <AdminShell currentPath={location.pathname}>{children}</AdminShell>;
+  return (
+    <RequireAuth requireAdmin>
+      <AdminShell currentPath={location.pathname}>{children}</AdminShell>
+    </RequireAuth>
+  );
 }
 
 function AdminShell({ children, currentPath }: { children: ReactNode; currentPath: string }) {
