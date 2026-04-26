@@ -19,7 +19,19 @@ export interface AuthState {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthState | null>(null);
+const defaultAuthState: AuthState = {
+  session: null,
+  user: null,
+  isAuthenticated: false,
+  isAdmin: false,
+  loading: true,
+  signIn: async () => {
+    throw new Error("Authentication is not ready yet");
+  },
+  signOut: async () => {},
+};
+
+const AuthContext = createContext<AuthState>(defaultAuthState);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -85,7 +97,5 @@ async function checkAdmin(userId: string): Promise<boolean> {
 }
 
 export function useAuth(): AuthState {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  return useContext(AuthContext);
 }
