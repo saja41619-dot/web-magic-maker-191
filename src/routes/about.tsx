@@ -38,7 +38,11 @@ function AboutPage() {
             <img
               src={mihrajPhoto}
               alt="Mihraj"
-              loading="eager"
+              width={288}
+              height={288}
+              loading="lazy"
+              decoding="async"
+              sizes="(min-width: 768px) 288px, (min-width: 640px) 224px, 192px"
               className="relative h-full w-full rounded-3xl border border-border object-cover object-top shadow-elegant"
             />
           </div>
