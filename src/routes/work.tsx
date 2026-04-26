@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/site/Layout";
 import { ArrowUpRight, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -11,158 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-type SkillInfo = { what: string; why: string };
-
-const skillInfo: Record<string, SkillInfo> = {
-  // Design
-  "UI/UX Design": {
-    what: "Designing interfaces and user flows that are clear, accessible, and pleasant to use.",
-    why: "It's the foundation of every product I build — good UX makes the rest of the work matter.",
-  },
-  "Branding": {
-    what: "Crafting a visual identity: logo, colour, type, and tone of voice.",
-    why: "A consistent brand makes products feel trustworthy and memorable.",
-  },
-  "Design Systems": {
-    what: "Reusable component libraries with shared tokens for colour, spacing, and type.",
-    why: "They let teams ship faster while keeping the UI consistent.",
-  },
-  "Prototyping": {
-    what: "Building interactive mockups to validate ideas before writing production code.",
-    why: "Cheaper to iterate on a prototype than to rebuild a shipped feature.",
-  },
-  "Figma": {
-    what: "My main design tool for UI, prototypes, and design systems.",
-    why: "Real-time collaboration and a strong component model.",
-  },
-  // Development
-  "React": {
-    what: "A component-based JavaScript library for building user interfaces.",
-    why: "Huge ecosystem and a mental model that scales from tiny widgets to full apps.",
-  },
-  "TypeScript": {
-    what: "JavaScript with a static type system.",
-    why: "Catches bugs before runtime and makes large codebases far easier to refactor.",
-  },
-  "Tailwind CSS": {
-    what: "A utility-first CSS framework for styling directly in markup.",
-    why: "Fast to write, consistent by default, and trivial to theme.",
-  },
-  "Next.js": {
-    what: "A React framework with routing, SSR, and great DX out of the box.",
-    why: "Best-in-class for production websites and full-stack apps.",
-  },
-  "Node.js": {
-    what: "A JavaScript runtime for servers, scripts, and tooling.",
-    why: "Lets me share language and types between frontend and backend.",
-  },
-  // Tools
-  "Git": {
-    what: "Distributed version control for tracking and collaborating on code.",
-    why: "Non-negotiable for any serious project.",
-  },
-  "Vite": {
-    what: "A modern build tool with fast dev server and optimised production builds.",
-    why: "Near-instant HMR makes the feedback loop a joy.",
-  },
-  "Framer": {
-    what: "A design + publishing tool for interactive marketing sites.",
-    why: "Great for high-fidelity motion-rich landing pages.",
-  },
-  "Webflow": {
-    what: "A visual builder for content-driven marketing websites with a CMS.",
-    why: "Lets non-developers update content without touching code.",
-  },
-  "Notion": {
-    what: "Docs, wikis, and project tracking in one place.",
-    why: "Keeps client work organised and shareable.",
-  },
-  // Offensive Security
-  "Penetration Testing": {
-    what: "Simulating real attacks on a system to find exploitable weaknesses.",
-    why: "It's the most effective way to know whether defences actually hold up.",
-  },
-  "Vulnerability Assessment": {
-    what: "Scanning and reviewing systems to catalogue known weaknesses.",
-    why: "Gives a prioritised baseline of risk before going deeper.",
-  },
-  "Web App Pentesting (OWASP Top 10)": {
-    what: "Testing for the most common and impactful web vulnerabilities.",
-    why: "Most real-world breaches still trace back to the OWASP Top 10.",
-  },
-  "Network Pentesting": {
-    what: "Probing networks for exposed services, weak configs, and lateral-movement paths.",
-    why: "One weak host can compromise an entire environment.",
-  },
-  "Privilege Escalation": {
-    what: "Turning a low-privilege foothold into admin/root access.",
-    why: "Demonstrates the real impact of an initial vulnerability.",
-  },
-  "Social Engineering": {
-    what: "Testing the human layer — phishing, pretexting, and awareness.",
-    why: "People are usually the easiest path in; testing this hardens the org.",
-  },
-  // Security Tools
-  "Kali Linux": {
-    what: "A Linux distribution preloaded with offensive-security tooling.",
-    why: "My go-to working environment for engagements.",
-  },
-  "Metasploit": {
-    what: "An exploitation framework with a huge library of modules and payloads.",
-    why: "Fast to validate exploitability and demonstrate impact.",
-  },
-  "Burp Suite": {
-    what: "An intercepting proxy and toolkit for web app testing.",
-    why: "The standard tool for hands-on web pentesting.",
-  },
-  "Nmap": {
-    what: "A network scanner for host discovery, port scanning, and service detection.",
-    why: "Almost every engagement starts with Nmap.",
-  },
-  "Wireshark": {
-    what: "A packet analyser for inspecting network traffic in detail.",
-    why: "Invaluable for debugging protocols and spotting suspicious traffic.",
-  },
-  "sqlmap": {
-    what: "Automates detection and exploitation of SQL-injection flaws.",
-    why: "Quickly proves impact when SQLi is present.",
-  },
-  "Hashcat": {
-    what: "A high-performance password-cracking tool.",
-    why: "Tests password strength and validates hashing choices.",
-  },
-  "Hydra": {
-    what: "A fast online brute-force tool for many protocols.",
-    why: "Useful for testing authentication endpoints and weak credentials.",
-  },
-  // Networking & Recon
-  "TCP/IP": {
-    what: "The core protocol suite that the internet runs on.",
-    why: "Understanding it is essential for both building and breaking systems.",
-  },
-  "DNS / HTTP / TLS": {
-    what: "The protocols behind names, web traffic, and encryption.",
-    why: "Most web vulnerabilities live somewhere in this stack.",
-  },
-  "Linux Administration": {
-    what: "Managing Linux servers, users, services, and permissions.",
-    why: "Most production servers — and most targets — run Linux.",
-  },
-  "Active Directory": {
-    what: "Microsoft's identity and access service for Windows networks.",
-    why: "Enterprise environments live or die by AD security.",
-  },
-  "OSINT": {
-    what: "Gathering intel from public sources before an engagement.",
-    why: "Free, legal, and surprisingly effective reconnaissance.",
-  },
-  "Log Analysis": {
-    what: "Reviewing system and application logs for anomalies and incidents.",
-    why: "Logs are where attacks are detected — and proven.",
-  },
-};
-
+import { projectsQuery, skillsQuery } from "@/lib/queries";
 
 const workSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -187,116 +37,43 @@ export const Route = createFileRoute("/work")({
   component: WorkPage,
 });
 
-const skillGroups = [
-  {
-    title: "Design",
-    skills: ["UI/UX Design", "Branding", "Design Systems", "Prototyping", "Figma"],
-  },
-  {
-    title: "Development",
-    skills: ["React", "TypeScript", "Tailwind CSS", "Next.js", "Node.js"],
-  },
-  {
-    title: "Tools",
-    skills: ["Git", "Vite", "Framer", "Webflow", "Notion"],
-  },
-  {
-    title: "Offensive Security",
-    skills: [
-      "Penetration Testing",
-      "Vulnerability Assessment",
-      "Web App Pentesting (OWASP Top 10)",
-      "Network Pentesting",
-      "Privilege Escalation",
-      "Social Engineering",
-    ],
-  },
-  {
-    title: "Security Tools",
-    skills: [
-      "Kali Linux",
-      "Metasploit",
-      "Burp Suite",
-      "Nmap",
-      "Wireshark",
-      "sqlmap",
-      "Hashcat",
-      "Hydra",
-    ],
-  },
-  {
-    title: "Networking & Recon",
-    skills: [
-      "TCP/IP",
-      "DNS / HTTP / TLS",
-      "Linux Administration",
-      "Active Directory",
-      "OSINT",
-      "Log Analysis",
-    ],
-  },
-];
-
-const projects = [
-  {
-    title: "Project Title One",
-    desc: "A modern SaaS dashboard with real-time analytics and beautiful data viz.",
-    tags: ["React", "TypeScript", "Design"],
-    color: "from-purple-500/30 to-blue-500/30",
-  },
-  {
-    title: "Project Title Two",
-    desc: "Complete brand redesign and marketing website for a fintech startup.",
-    tags: ["Branding", "Web", "Figma"],
-    color: "from-pink-500/30 to-purple-500/30",
-  },
-  {
-    title: "Project Title Three",
-    desc: "Mobile-first e-commerce experience with a focus on conversion.",
-    tags: ["Mobile", "UX", "Shopify"],
-    color: "from-blue-500/30 to-cyan-500/30",
-  },
-  {
-    title: "Project Title Four",
-    desc: "Design system and component library used across 12+ products.",
-    tags: ["Design System", "React"],
-    color: "from-amber-500/30 to-pink-500/30",
-  },
-  {
-    title: "Project Title Five",
-    desc: "AI-powered productivity app with a delightfully minimal interface.",
-    tags: ["Product", "AI", "UX"],
-    color: "from-emerald-500/30 to-cyan-500/30",
-  },
-  {
-    title: "Project Title Six",
-    desc: "Marketing site with bespoke illustrations and smooth scroll animations.",
-    tags: ["Web", "Animation"],
-    color: "from-violet-500/30 to-blue-500/30",
-  },
-];
+const fallbackGradient = "from-purple-500/30 to-blue-500/30";
 
 function WorkPage() {
   const { q } = Route.useSearch();
   const navigate = useNavigate({ from: "/work" });
-  const [activeSkill, setActiveSkill] = useState<string | null>(null);
+  const [activeSkillId, setActiveSkillId] = useState<string | null>(null);
+
+  const { data: skills = [] } = useQuery(skillsQuery());
+  const { data: projects = [] } = useQuery(projectsQuery());
 
   const query = q.trim().toLowerCase();
+
+  const skillGroups = useMemo(() => {
+    const map = new Map<string, typeof skills>();
+    for (const s of skills) {
+      const list = map.get(s.category) ?? [];
+      list.push(s);
+      map.set(s.category, list);
+    }
+    return Array.from(map.entries()).map(([title, items]) => ({ title, items }));
+  }, [skills]);
 
   const filteredGroups = useMemo(() => {
     if (!query) return skillGroups;
     return skillGroups
       .map((g) => {
         const groupMatches = g.title.toLowerCase().includes(query);
-        const skills = groupMatches
-          ? g.skills
-          : g.skills.filter((s) => s.toLowerCase().includes(query));
-        return { ...g, skills };
+        const items = groupMatches
+          ? g.items
+          : g.items.filter((s) => s.name.toLowerCase().includes(query));
+        return { ...g, items };
       })
-      .filter((g) => g.skills.length > 0);
-  }, [query]);
+      .filter((g) => g.items.length > 0);
+  }, [skillGroups, query]);
 
-  const totalMatches = filteredGroups.reduce((sum, g) => sum + g.skills.length, 0);
+  const totalMatches = filteredGroups.reduce((sum, g) => sum + g.items.length, 0);
+  const activeSkill = skills.find((s) => s.id === activeSkillId) ?? null;
 
   const highlight = (text: string) => {
     if (!query) return text;
@@ -336,10 +113,7 @@ function WorkPage() {
               type="search"
               value={q}
               onChange={(e) =>
-                navigate({
-                  search: { q: e.target.value },
-                  replace: true,
-                })
+                navigate({ search: { q: e.target.value }, replace: true })
               }
               placeholder="Search skills..."
               aria-label="Search skills"
@@ -348,12 +122,7 @@ function WorkPage() {
             {q && (
               <button
                 type="button"
-                onClick={() =>
-                  navigate({
-                    search: { q: "" },
-                    replace: true,
-                  })
-                }
+                onClick={() => navigate({ search: { q: "" }, replace: true })}
                 aria-label="Clear search"
                 className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:text-foreground"
               >
@@ -379,14 +148,14 @@ function WorkPage() {
                   {highlight(g.title)}
                 </h3>
                 <ul className="mt-4 flex flex-wrap gap-2">
-                  {g.skills.map((s) => (
-                    <li key={s}>
+                  {g.items.map((s) => (
+                    <li key={s.id}>
                       <button
                         type="button"
-                        onClick={() => setActiveSkill(s)}
+                        onClick={() => setActiveSkillId(s.id)}
                         className="rounded-md border border-border bg-secondary/50 px-3 py-1 text-xs font-medium transition-smooth hover:border-primary hover:bg-secondary hover:text-primary"
                       >
-                        {highlight(s)}
+                        {highlight(s.name)}
                       </button>
                     </li>
                   ))}
@@ -396,71 +165,88 @@ function WorkPage() {
           </div>
         ) : (
           <div className="mt-6 rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center text-sm text-muted-foreground">
-            Try a different keyword — for example "React", "Burp", or "Linux".
+            {skills.length === 0
+              ? "No skills yet — add some from the admin panel."
+              : 'Try a different keyword.'}
           </div>
         )}
       </section>
 
       <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
         <h2 className="font-display text-2xl font-bold">Projects</h2>
-        <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
-            <a
-              key={p.title}
-              href="#"
-              className="group overflow-hidden rounded-2xl border border-border bg-card transition-smooth hover:-translate-y-1 hover:border-primary/50 hover:shadow-glow"
-            >
-              <div
-                className={`relative aspect-[4/3] bg-gradient-to-br ${p.color} flex items-center justify-center`}
+        {projects.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center text-sm text-muted-foreground">
+            No projects yet — add some from the admin panel.
+          </div>
+        ) : (
+          <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {projects.map((p) => (
+              <a
+                key={p.id}
+                href={p.link ?? "#"}
+                target={p.link ? "_blank" : undefined}
+                rel={p.link ? "noopener noreferrer" : undefined}
+                className="group overflow-hidden rounded-2xl border border-border bg-card transition-smooth hover:-translate-y-1 hover:border-primary/50 hover:shadow-glow"
               >
-                <span className="font-display text-xl font-bold text-foreground/60">
-                  {p.title}
-                </span>
-                <div className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 backdrop-blur transition-smooth group-hover:opacity-100">
-                  <ArrowUpRight className="h-4 w-4" />
-                </div>
-              </div>
-              <div className="p-5">
-                <h3 className="font-semibold">{p.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{p.desc}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {p.tags.map((t) => (
-                    <span
-                      key={t}
-                      className="rounded-md bg-secondary/60 px-2 py-0.5 text-xs text-muted-foreground"
-                    >
-                      {t}
+                <div
+                  className={`relative aspect-[4/3] flex items-center justify-center ${
+                    p.image_url ? "" : `bg-gradient-to-br ${fallbackGradient}`
+                  }`}
+                >
+                  {p.image_url ? (
+                    <img
+                      src={p.image_url}
+                      alt={p.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="font-display text-xl font-bold text-foreground/60">
+                      {p.title}
                     </span>
-                  ))}
+                  )}
+                  <div className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 backdrop-blur transition-smooth group-hover:opacity-100">
+                    <ArrowUpRight className="h-4 w-4" />
+                  </div>
                 </div>
-              </div>
-            </a>
-          ))}
-        </div>
+                <div className="p-5">
+                  <h3 className="font-semibold">{p.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {p.tags.map((t) => (
+                      <span
+                        key={t}
+                        className="rounded-md bg-secondary/60 px-2 py-0.5 text-xs text-muted-foreground"
+                      >
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
       </section>
 
-      <Dialog open={activeSkill !== null} onOpenChange={(open) => !open && setActiveSkill(null)}>
+      <Dialog
+        open={activeSkill !== null}
+        onOpenChange={(open) => !open && setActiveSkillId(null)}
+      >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{activeSkill}</DialogTitle>
-            {activeSkill && skillInfo[activeSkill] ? (
-              <DialogDescription className="pt-2">
-                {skillInfo[activeSkill].what}
-              </DialogDescription>
-            ) : (
-              <DialogDescription className="pt-2">
-                A core part of my toolkit — details coming soon.
-              </DialogDescription>
-            )}
+            <DialogTitle>{activeSkill?.name}</DialogTitle>
+            <DialogDescription className="pt-2">
+              {activeSkill?.what || "A core part of my toolkit — details coming soon."}
+            </DialogDescription>
           </DialogHeader>
-          {activeSkill && skillInfo[activeSkill] && (
+          {activeSkill?.why && (
             <div className="mt-2 rounded-lg border border-border bg-secondary/40 p-4">
               <div className="text-xs font-semibold uppercase tracking-wider text-primary">
                 Why I use it
               </div>
-              <p className="mt-1 text-sm text-foreground">
-                {skillInfo[activeSkill].why}
-              </p>
+              <p className="mt-1 text-sm text-foreground">{activeSkill.why}</p>
             </div>
           )}
         </DialogContent>

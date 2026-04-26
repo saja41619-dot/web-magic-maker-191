@@ -1,15 +1,23 @@
 import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Mail, MessageCircle, Instagram } from "lucide-react";
+import { siteSettingsQuery } from "@/lib/queries";
 
 export function Footer() {
+  const { data: settings } = useQuery(siteSettingsQuery());
+  const name = settings?.name ?? "Mihraj";
+  const tagline =
+    settings?.tagline ?? "Freelance designer & developer crafting clean, modern digital experiences.";
+  const email = settings?.email ?? "mihraj@gmail.com";
+  const whatsapp = settings?.whatsapp ?? "919792313786";
+  const instagram = settings?.instagram ?? "https://instagram.com/";
+
   return (
     <footer className="mt-24 border-t border-border/40 bg-background/40">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-3">
         <div>
-          <h3 className="font-display text-lg font-bold text-gradient">Mihraj</h3>
-          <p className="mt-2 max-w-xs text-sm text-muted-foreground">
-            Freelance designer & developer crafting clean, modern digital experiences.
-          </p>
+          <h3 className="font-display text-lg font-bold text-gradient">{name}</h3>
+          <p className="mt-2 max-w-xs text-sm text-muted-foreground">{tagline}</p>
         </div>
 
         <div>
@@ -37,9 +45,15 @@ export function Footer() {
           <h4 className="text-sm font-semibold text-foreground">Connect</h4>
           <div className="mt-3 flex gap-3">
             {[
-              { Icon: Mail, href: "mailto:mihraj@gmail.com", label: "Email" },
-              { Icon: MessageCircle, href: "https://wa.me/919792313786", label: "WhatsApp" },
-              { Icon: Instagram, href: "https://instagram.com/", label: "Instagram" },
+              { Icon: Mail, href: `mailto:${email}`, label: "Email" },
+              {
+                Icon: MessageCircle,
+                href: whatsapp.startsWith("http")
+                  ? whatsapp
+                  : `https://wa.me/${whatsapp.replace(/[^0-9]/g, "")}`,
+                label: "WhatsApp",
+              },
+              { Icon: Instagram, href: instagram, label: "Instagram" },
             ].map(({ Icon, href, label }) => (
               <a
                 key={label}
@@ -54,7 +68,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-border/40 py-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Mihraj. All rights reserved.
+        © {new Date().getFullYear()} {name}. All rights reserved.
       </div>
     </footer>
   );

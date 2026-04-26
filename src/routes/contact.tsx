@@ -1,8 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/site/Layout";
 import { Mail, Phone, MapPin, MessageCircle, Instagram, Send, Copy, Check } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { siteSettingsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -22,20 +26,33 @@ export const Route = createFileRoute("/contact")({
   component: ContactPage,
 });
 
-const contactItems = [
-  { Icon: Mail, label: "Email", value: "mihraj@gmail.com" },
-  { Icon: Phone, label: "Phone", value: "+91 9792 313 786" },
-  { Icon: MapPin, label: "Location", value: "Kannur, India" },
-];
-
-const socials = [
-  { Icon: Mail, href: "mailto:mihraj@gmail.com", label: "Email" },
-  { Icon: MessageCircle, href: "https://wa.me/919792313786", label: "WhatsApp" },
-  { Icon: Instagram, href: "https://instagram.com/", label: "Instagram" },
-];
+const contactSchema = z.object({
+  name: z.string().trim().min(1, "Name required").max(100),
+  email: z.string().trim().email("Invalid email").max(255),
+  message: z.string().trim().min(1, "Message required").max(2000),
+});
 
 function ContactPage() {
-  const [submitted, setSubmitted] = useState(false);
+  const { data: settings } = useQuery(siteSettingsQuery());
+  const email = settings?.email ?? "mihraj@gmail.com";
+  const whatsappRaw = settings?.whatsapp ?? "919792313786";
+  const instagram = settings?.instagram ?? "https://instagram.com/";
+  const whatsappHref = whatsappRaw.startsWith("http")
+    ? whatsappRaw
+    : `https://wa.me/${whatsappRaw.replace(/[^0-9]/g, "")}`;
+
+  const contactItems = [
+    { Icon: Mail, label: "Email", value: email },
+    { Icon: Phone, label: "Phone", value: "+91 9792 313 786" },
+    { Icon: MapPin, label: "Location", value: "Kannur, India" },
+  ];
+  const socials = [
+    { Icon: Mail, href: `mailto:${email}`, label: "Email" },
+    { Icon: MessageCircle, href: whatsappHref, label: "WhatsApp" },
+    { Icon: Instagram, href: instagram, label: "Instagram" },
+  ];
+
+  const [submitting, setSubmitting] = useState(false);
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null);
 
   const handleCopy = async (label: string, value: string) => {
@@ -49,11 +66,28 @@ function ContactPage() {
     }
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 4000);
-    (e.target as HTMLFormElement).reset();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const parsed = contactSchema.safeParse({
+      name: fd.get("name"),
+      email: fd.get("email"),
+      message: fd.get("message"),
+    });
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    setSubmitting(true);
+    const { error } = await supabase.from("contact_messages").insert(parsed.data);
+    setSubmitting(false);
+    if (error) {
+      toast.error("Could not send message. Please try again.");
+      return;
+    }
+    toast.success("Message sent! I'll reply within 24 hours.");
+    form.reset();
   };
 
   return (
@@ -74,7 +108,6 @@ function ContactPage() {
 
       <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
         <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
-          {/* Info */}
           <div className="space-y-4">
             {contactItems.map(({ Icon, label, value }) => {
               const isCopied = copiedLabel === label;
@@ -127,61 +160,53 @@ function ContactPage() {
             </div>
           </div>
 
-          {/* Form */}
           <form
             onSubmit={handleSubmit}
             className="rounded-2xl border border-border bg-card p-6 shadow-elegant md:p-8"
           >
             <div className="grid gap-5">
               <div className="grid gap-2">
-                <label htmlFor="name" className="text-sm font-medium">
-                  Name
-                </label>
+                <label htmlFor="name" className="text-sm font-medium">Name</label>
                 <input
                   id="name"
                   name="name"
                   required
+                  maxLength={100}
                   placeholder="Your name"
                   className="rounded-md border border-border bg-background/60 px-4 py-3 text-sm outline-none transition-smooth focus:border-primary focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               <div className="grid gap-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </label>
+                <label htmlFor="email" className="text-sm font-medium">Email</label>
                 <input
                   id="email"
                   name="email"
                   type="email"
                   required
+                  maxLength={255}
                   placeholder="you@example.com"
                   className="rounded-md border border-border bg-background/60 px-4 py-3 text-sm outline-none transition-smooth focus:border-primary focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               <div className="grid gap-2">
-                <label htmlFor="message" className="text-sm font-medium">
-                  Message
-                </label>
+                <label htmlFor="message" className="text-sm font-medium">Message</label>
                 <textarea
                   id="message"
                   name="message"
                   required
                   rows={6}
+                  maxLength={2000}
                   placeholder="Tell me about your project..."
                   className="resize-none rounded-md border border-border bg-background/60 px-4 py-3 text-sm outline-none transition-smooth focus:border-primary focus:ring-2 focus:ring-primary/30"
                 />
               </div>
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-gradient-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:opacity-90"
+                disabled={submitting}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-gradient-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:opacity-90 disabled:opacity-60"
               >
-                <Send className="h-4 w-4" /> Send Message
+                <Send className="h-4 w-4" /> {submitting ? "Sending..." : "Send Message"}
               </button>
-              {submitted && (
-                <p className="text-center text-sm text-primary">
-                  Thanks! Your message has been sent (demo).
-                </p>
-              )}
             </div>
           </form>
         </div>
