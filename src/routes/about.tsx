@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/site/Layout";
 import { Coffee, MapPin, Globe, Heart } from "lucide-react";
 import mihrajPhoto from "@/assets/mihraj.jpg";
+import { siteSettingsQuery } from "@/lib/queries";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -29,6 +31,13 @@ const facts = [
 ];
 
 function AboutPage() {
+  const { data: settings } = useQuery(siteSettingsQuery());
+  const name = settings?.name ?? "Mihraj";
+  const photo = settings?.photo_url || mihrajPhoto;
+  const bio =
+    settings?.bio ||
+    `I'm ${name} — a freelance designer and developer with 6+ years of experience helping brands and startups ship beautiful, functional products. I believe great software is invisible: it just works, and it feels right.`;
+
   return (
     <Layout>
       <section className="mx-auto max-w-4xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
@@ -36,8 +45,8 @@ function AboutPage() {
           <div className="relative mx-auto aspect-square w-48 sm:w-56 md:w-72">
             <div className="absolute -inset-4 rounded-3xl bg-gradient-primary opacity-30 blur-2xl" />
             <img
-              src={mihrajPhoto}
-              alt="Mihraj"
+              src={photo}
+              alt={name}
               width={288}
               height={288}
               loading="lazy"
@@ -53,11 +62,7 @@ function AboutPage() {
             <h1 className="mt-2 font-display text-4xl font-bold sm:text-5xl">
               Designer, developer, <span className="text-gradient">problem-solver</span>.
             </h1>
-            <p className="mt-5 text-muted-foreground">
-              I'm Mihraj — a freelance designer and developer with 6+ years of experience
-              helping brands and startups ship beautiful, functional products. I believe great
-              software is invisible: it just works, and it feels right.
-            </p>
+            <p className="mt-5 text-muted-foreground whitespace-pre-line">{bio}</p>
           </div>
         </div>
       </section>
