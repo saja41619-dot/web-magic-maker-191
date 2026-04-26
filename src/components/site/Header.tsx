@@ -89,7 +89,10 @@ export function Header() {
               <Link
                 key={item.to}
                 to={item.to}
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  if (item.to === "/") handleHomeClick();
+                  setOpen(false);
+                }}
                 activeOptions={{ exact: item.to === "/" }}
                 activeProps={{ className: "text-foreground bg-secondary" }}
                 inactiveProps={{ className: "text-muted-foreground" }}
