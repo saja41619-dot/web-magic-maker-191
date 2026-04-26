@@ -64,16 +64,19 @@ export function Header() {
               activeOptions={{ exact: item.to === "/" }}
               activeProps={{ className: "text-foreground bg-secondary" }}
               inactiveProps={{ className: "text-muted-foreground hover:text-foreground" }}
-              className="rounded-md px-4 py-2 text-sm font-medium transition-smooth hover:bg-secondary/60"
+              className="group relative rounded-md px-4 py-2 text-sm font-medium transition-smooth hover:-translate-y-0.5 hover:bg-secondary/60"
             >
-              {item.label}
+              <span className="relative">
+                {item.label}
+                <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-gradient-primary transition-all duration-300 group-hover:w-full" />
+              </span>
             </Link>
           ))}
         </nav>
 
         <Link
           to="/contact"
-          className="hidden rounded-md bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:opacity-90 md:inline-flex"
+          className="hidden rounded-md bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:-translate-y-0.5 hover:opacity-90 hover:shadow-[0_0_24px_-4px_oklch(0.7_0.2_285_/_0.7)] md:inline-flex"
         >
           Hire Me
         </Link>
