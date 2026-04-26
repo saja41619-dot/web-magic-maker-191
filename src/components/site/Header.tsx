@@ -1,5 +1,5 @@
-import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import mihrajPhoto from "@/assets/mihraj.jpg";
@@ -18,6 +18,20 @@ export function Header() {
   const { data: settings } = useQuery(siteSettingsQuery());
   const name = settings?.name ?? "Mihraj";
   const photo = settings?.photo_url || mihrajPhoto;
+  const navigate = useNavigate();
+  const clicksRef = useRef<number[]>([]);
+
+  const handleHomeClick = () => {
+    const now = Date.now();
+    // Keep clicks from the last 2 seconds
+    clicksRef.current = [...clicksRef.current.filter((t) => now - t < 2000), now];
+    if (clicksRef.current.length >= 5) {
+      clicksRef.current = [];
+      setOpen(false);
+      void navigate({ to: "/login" });
+    }
+  };
+
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/70 backdrop-blur-xl">
@@ -41,6 +55,7 @@ export function Header() {
             <Link
               key={item.to}
               to={item.to}
+              onClick={item.to === "/" ? handleHomeClick : undefined}
               activeOptions={{ exact: item.to === "/" }}
               activeProps={{ className: "text-foreground bg-secondary" }}
               inactiveProps={{ className: "text-muted-foreground hover:text-foreground" }}
@@ -74,7 +89,10 @@ export function Header() {
               <Link
                 key={item.to}
                 to={item.to}
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  if (item.to === "/") handleHomeClick();
+                  setOpen(false);
+                }}
                 activeOptions={{ exact: item.to === "/" }}
                 activeProps={{ className: "text-foreground bg-secondary" }}
                 inactiveProps={{ className: "text-muted-foreground" }}
