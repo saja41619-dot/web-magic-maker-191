@@ -32,13 +32,14 @@ function AboutPage() {
   return (
     <Layout>
       <section className="mx-auto max-w-4xl px-4 pb-16 pt-16 sm:px-6 sm:pt-24">
-        <div className="grid items-center gap-10 md:grid-cols-[1fr_2fr]">
-          <div className="relative mx-auto h-48 w-48 md:h-full md:w-full md:max-w-xs">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-primary opacity-30 blur-2xl" />
+        <div className="grid items-center gap-10 md:grid-cols-[auto_1fr]">
+          <div className="relative mx-auto aspect-square w-48 sm:w-56 md:w-72">
+            <div className="absolute -inset-4 rounded-3xl bg-gradient-primary opacity-30 blur-2xl" />
             <img
               src={mihrajPhoto}
               alt="Mihraj"
-              className="relative h-full w-full rounded-3xl border border-border object-cover shadow-elegant"
+              loading="eager"
+              className="relative h-full w-full rounded-3xl border border-border object-cover object-top shadow-elegant"
             />
           </div>
           <div>
