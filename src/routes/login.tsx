@@ -86,20 +86,8 @@ function LoginPage() {
     }
     setSubmitting(true);
     try {
-      if (mode === "signup") {
-        const { error: err } = await supabase.auth.signUp({
-          email: parsed.data.email,
-          password: parsed.data.password,
-          options: { emailRedirectTo: `${window.location.origin}/admin` },
-        });
-        if (err) throw err;
-        toast.success("Account created! Signing you in...");
-        await signIn(parsed.data.email, parsed.data.password);
-        void navigate({ to: redirect, replace: true });
-      } else {
-        await signIn(parsed.data.email, parsed.data.password);
-        void navigate({ to: redirect, replace: true });
-      }
+      await signIn(parsed.data.email, parsed.data.password);
+      void navigate({ to: redirect, replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
