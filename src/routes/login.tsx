@@ -29,7 +29,7 @@ const credSchema = z.object({
 
 const emailSchema = z.string().trim().email("Enter a valid email").max(255);
 
-type Mode = "signin" | "signup" | "forgot";
+type Mode = "signin" | "forgot";
 
 function LoginPage() {
   const { signIn, isAuthenticated, loading } = useAuth();
@@ -86,20 +86,8 @@ function LoginPage() {
     }
     setSubmitting(true);
     try {
-      if (mode === "signup") {
-        const { error: err } = await supabase.auth.signUp({
-          email: parsed.data.email,
-          password: parsed.data.password,
-          options: { emailRedirectTo: `${window.location.origin}/admin` },
-        });
-        if (err) throw err;
-        toast.success("Account created! Signing you in...");
-        await signIn(parsed.data.email, parsed.data.password);
-        void navigate({ to: redirect, replace: true });
-      } else {
-        await signIn(parsed.data.email, parsed.data.password);
-        void navigate({ to: redirect, replace: true });
-      }
+      await signIn(parsed.data.email, parsed.data.password);
+      void navigate({ to: redirect, replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -107,20 +95,12 @@ function LoginPage() {
     }
   };
 
-  const title =
-    mode === "signup"
-      ? "Create admin account"
-      : mode === "forgot"
-        ? "Reset your password"
-        : "Admin sign in";
+  const title = mode === "forgot" ? "Reset your password" : "Admin sign in";
   const subtitle =
-    mode === "signup"
-      ? "Create your account, then I'll grant admin access."
-      : mode === "forgot"
-        ? "Enter your email and we'll send you a reset link."
-        : "Sign in to manage your portfolio.";
-  const submitLabel =
-    mode === "signup" ? "Create account" : mode === "forgot" ? "Send reset link" : "Sign in";
+    mode === "forgot"
+      ? "Enter your email and we'll send you a reset link."
+      : "Sign in to manage your portfolio.";
+  const submitLabel = mode === "forgot" ? "Send reset link" : "Sign in";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -168,7 +148,7 @@ function LoginPage() {
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full rounded-md border border-border bg-background/60 px-4 py-2.5 pr-10 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
@@ -200,23 +180,13 @@ function LoginPage() {
             </button>
           </form>
           <div className="mt-4 space-y-2 text-center text-sm text-muted-foreground">
-            {mode === "forgot" ? (
+            {mode === "forgot" && (
               <button
                 type="button"
                 onClick={() => switchMode("signin")}
                 className="hover:text-foreground"
               >
                 Back to sign in
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => switchMode(mode === "signup" ? "signin" : "signup")}
-                className="hover:text-foreground"
-              >
-                {mode === "signup"
-                  ? "Already have an account? Sign in"
-                  : "First time? Create admin account"}
               </button>
             )}
           </div>
