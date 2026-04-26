@@ -95,20 +95,12 @@ function LoginPage() {
     }
   };
 
-  const title =
-    mode === "signup"
-      ? "Create admin account"
-      : mode === "forgot"
-        ? "Reset your password"
-        : "Admin sign in";
+  const title = mode === "forgot" ? "Reset your password" : "Admin sign in";
   const subtitle =
-    mode === "signup"
-      ? "Create your account, then I'll grant admin access."
-      : mode === "forgot"
-        ? "Enter your email and we'll send you a reset link."
-        : "Sign in to manage your portfolio.";
-  const submitLabel =
-    mode === "signup" ? "Create account" : mode === "forgot" ? "Send reset link" : "Sign in";
+    mode === "forgot"
+      ? "Enter your email and we'll send you a reset link."
+      : "Sign in to manage your portfolio.";
+  const submitLabel = mode === "forgot" ? "Send reset link" : "Sign in";
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
