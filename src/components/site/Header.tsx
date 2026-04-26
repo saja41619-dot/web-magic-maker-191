@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useRef, useState, type MouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import mihrajPhoto from "@/assets/mihraj.jpg";
@@ -21,11 +21,12 @@ export function Header() {
   const navigate = useNavigate();
   const clicksRef = useRef<number[]>([]);
 
-  const handleHomeClick = () => {
+  const handleHomeClick = (event?: MouseEvent<HTMLAnchorElement>) => {
     const now = Date.now();
-    // Keep clicks from the last 2 seconds
     clicksRef.current = [...clicksRef.current.filter((t) => now - t < 2000), now];
     if (clicksRef.current.length >= 5) {
+      event?.preventDefault();
+      event?.stopPropagation();
       clicksRef.current = [];
       setOpen(false);
       void navigate({ to: "/login" });
@@ -93,8 +94,10 @@ export function Header() {
               <Link
                 key={item.to}
                 to={item.to}
-                onClick={() => {
-                  if (item.to === "/") handleHomeClick();
+                onClick={(event) => {
+                  if (item.to === "/") {
+                    handleHomeClick(event);
+                  }
                   setOpen(false);
                 }}
                 activeOptions={{ exact: item.to === "/" }}
