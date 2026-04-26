@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Layout } from "@/components/site/Layout";
 import { Coffee, MapPin, Globe, Heart } from "lucide-react";
+import mihrajPhoto from "@/assets/mihraj.jpg";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -34,9 +35,11 @@ function AboutPage() {
         <div className="grid items-center gap-10 md:grid-cols-[1fr_2fr]">
           <div className="relative mx-auto h-48 w-48 md:h-full md:w-full md:max-w-xs">
             <div className="absolute inset-0 rounded-3xl bg-gradient-primary opacity-30 blur-2xl" />
-            <div className="relative flex h-full w-full items-center justify-center rounded-3xl border border-border bg-card font-display text-6xl font-bold text-gradient shadow-elegant">
-              M
-            </div>
+            <img
+              src={mihrajPhoto}
+              alt="Mihraj"
+              className="relative h-full w-full rounded-3xl border border-border object-cover shadow-elegant"
+            />
           </div>
           <div>
             <span className="text-sm font-medium uppercase tracking-wider text-primary">
