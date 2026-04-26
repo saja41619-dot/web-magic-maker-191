@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import mihrajPhoto from "@/assets/mihraj.jpg";
+import { siteSettingsQuery } from "@/lib/queries";
 
 const navItems = [
   { to: "/", label: "Home" },
@@ -13,14 +15,17 @@ const navItems = [
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const { data: settings } = useQuery(siteSettingsQuery());
+  const name = settings?.name ?? "Mihraj";
+  const photo = settings?.photo_url || mihrajPhoto;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold">
           <img
-            src={mihrajPhoto}
-            alt="Mihraj"
+            src={photo}
+            alt={name}
             width={32}
             height={32}
             loading="eager"
@@ -28,7 +33,7 @@ export function Header() {
             sizes="32px"
             className="h-8 w-8 rounded-lg object-cover shadow-glow ring-1 ring-border/40"
           />
-          <span className="text-gradient">Mihraj</span>
+          <span className="text-gradient">{name}</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
