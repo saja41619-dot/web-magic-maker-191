@@ -180,23 +180,13 @@ function LoginPage() {
             </button>
           </form>
           <div className="mt-4 space-y-2 text-center text-sm text-muted-foreground">
-            {mode === "forgot" ? (
+            {mode === "forgot" && (
               <button
                 type="button"
                 onClick={() => switchMode("signin")}
                 className="hover:text-foreground"
               >
                 Back to sign in
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => switchMode(mode === "signup" ? "signin" : "signup")}
-                className="hover:text-foreground"
-              >
-                {mode === "signup"
-                  ? "Already have an account? Sign in"
-                  : "First time? Create admin account"}
               </button>
             )}
           </div>
