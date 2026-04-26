@@ -21,6 +21,11 @@ export function Header() {
           <img
             src={mihrajPhoto}
             alt="Mihraj"
+            width={32}
+            height={32}
+            loading="eager"
+            decoding="async"
+            sizes="32px"
             className="h-8 w-8 rounded-lg object-cover shadow-glow ring-1 ring-border/40"
           />
           <span className="text-gradient">Mihraj</span>
