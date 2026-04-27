@@ -233,6 +233,21 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
+            <div className="mt-3 px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              More
+            </div>
+            {moreItems.map((item, i) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setOpen(false)}
+                style={{ animationDelay: `${(navItems.length + i) * 40}ms` }}
+                className="animate-fade-in flex flex-col rounded-md px-4 py-2.5 transition-smooth hover:translate-x-1 hover:bg-secondary/60"
+              >
+                <span className="text-sm font-medium text-foreground">{item.label}</span>
+                <span className="text-xs text-muted-foreground">{item.description}</span>
+              </Link>
+            ))}
             <Link
               to="/contact"
               onClick={() => setOpen(false)}
