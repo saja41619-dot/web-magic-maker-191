@@ -1,5 +1,5 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useRef, useState, type MouseEvent } from "react";
+import { Link, useNavigate, useLocation } from "@tanstack/react-router";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Menu, X } from "lucide-react";
 import mihrajPhoto from "@/assets/mihraj.jpg";
@@ -13,13 +13,55 @@ const navItems = [
   { to: "/contact", label: "Contact" },
 ] as const;
 
+type Rect = { left: number; width: number } | null;
+
 export function Header() {
   const [open, setOpen] = useState(false);
   const { data: settings } = useQuery(siteSettingsQuery());
   const name = settings?.name ?? "Mihraj";
   const photo = settings?.photo_url || mihrajPhoto;
   const navigate = useNavigate();
+  const location = useLocation();
   const clicksRef = useRef<number[]>([]);
+
+  const navRef = useRef<HTMLElement>(null);
+  const linkRefs = useRef<Array<HTMLAnchorElement | null>>([]);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [pillRect, setPillRect] = useState<Rect>(null);
+
+  const activeIdx = navItems.findIndex((item) =>
+    item.to === "/"
+      ? location.pathname === "/"
+      : location.pathname.startsWith(item.to),
+  );
+  const targetIdx = hoverIdx ?? (activeIdx >= 0 ? activeIdx : null);
+
+  useLayoutEffect(() => {
+    if (targetIdx === null) {
+      setPillRect(null);
+      return;
+    }
+    const el = linkRefs.current[targetIdx];
+    const nav = navRef.current;
+    if (!el || !nav) return;
+    const elRect = el.getBoundingClientRect();
+    const navRect = nav.getBoundingClientRect();
+    setPillRect({ left: elRect.left - navRect.left, width: elRect.width });
+  }, [targetIdx, location.pathname]);
+
+  useEffect(() => {
+    const onResize = () => {
+      if (targetIdx === null) return;
+      const el = linkRefs.current[targetIdx];
+      const nav = navRef.current;
+      if (!el || !nav) return;
+      const elRect = el.getBoundingClientRect();
+      const navRect = nav.getBoundingClientRect();
+      setPillRect({ left: elRect.left - navRect.left, width: elRect.width });
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [targetIdx]);
 
   const handleHomeClick = (event?: MouseEvent<HTMLAnchorElement>) => {
     const now = Date.now();
@@ -33,6 +75,21 @@ export function Header() {
     }
   };
 
+  // Magnetic hover for Hire Me
+  const hireRef = useRef<HTMLAnchorElement>(null);
+  const onHireMove = (e: MouseEvent<HTMLAnchorElement>) => {
+    const el = hireRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = e.clientX - (r.left + r.width / 2);
+    const y = e.clientY - (r.top + r.height / 2);
+    el.style.transform = `translate(${x * 0.25}px, ${y * 0.35}px) scale(1.04)`;
+  };
+  const onHireLeave = () => {
+    const el = hireRef.current;
+    if (!el) return;
+    el.style.transform = "";
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/70 backdrop-blur-xl">
@@ -57,18 +114,36 @@ export function Header() {
           <span className="animate-shimmer-text">{name}</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
-          {navItems.map((item) => (
+        <nav
+          ref={navRef}
+          onMouseLeave={() => setHoverIdx(null)}
+          className="relative hidden items-center gap-1 md:flex"
+        >
+          {/* Sliding pill */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 -z-10 h-9 -translate-y-1/2 rounded-md bg-secondary/80 shadow-[inset_0_0_0_1px_oklch(0.7_0.2_285_/_0.45),0_0_24px_-6px_oklch(0.7_0.2_285_/_0.7)] transition-all duration-300 ease-out"
+            style={{
+              left: pillRect?.left ?? 0,
+              width: pillRect?.width ?? 0,
+              opacity: pillRect ? 1 : 0,
+            }}
+          />
+          {navItems.map((item, i) => (
             <Link
               key={item.to}
               to={item.to}
+              ref={(el) => {
+                linkRefs.current[i] = el;
+              }}
+              onMouseEnter={() => setHoverIdx(i)}
+              onFocus={() => setHoverIdx(i)}
               onClick={item.to === "/" ? handleHomeClick : undefined}
               activeOptions={{ exact: item.to === "/" }}
-              activeProps={{ className: "text-foreground bg-secondary/80 shadow-[inset_0_0_0_1px_oklch(0.7_0.2_285_/_0.4)]" }}
+              activeProps={{ className: "text-foreground" }}
               inactiveProps={{ className: "text-muted-foreground hover:text-foreground" }}
-              className="group relative overflow-hidden rounded-md px-4 py-2 text-sm font-medium transition-smooth hover:-translate-y-0.5 hover:bg-secondary/60"
+              className="group relative rounded-md px-4 py-2 text-sm font-medium transition-smooth"
             >
-              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary/15 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
               <span className="relative">
                 {item.label}
                 <span className="absolute -bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-gradient-primary shadow-[0_0_8px_oklch(0.7_0.2_285_/_0.8)] transition-all duration-300 group-hover:w-full" />
@@ -78,8 +153,11 @@ export function Header() {
         </nav>
 
         <Link
+          ref={hireRef}
           to="/contact"
-          className="btn-sheen hidden rounded-md bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-[0_0_28px_-2px_oklch(0.7_0.2_285_/_0.8)] md:inline-flex"
+          onMouseMove={onHireMove}
+          onMouseLeave={onHireLeave}
+          className="btn-sheen hidden rounded-md bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-transform duration-200 ease-out will-change-transform hover:shadow-[0_0_28px_-2px_oklch(0.7_0.2_285_/_0.85)] md:inline-flex"
         >
           Hire Me
         </Link>
