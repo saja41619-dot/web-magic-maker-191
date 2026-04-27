@@ -111,4 +111,69 @@
   .transition-smooth {
     transition: var(--transition-smooth);
   }
+
+  @keyframes shimmer-text {
+    0% { background-position: 200% center; }
+    100% { background-position: -200% center; }
+  }
+  .animate-shimmer-text {
+    background: linear-gradient(
+      90deg,
+      oklch(0.7 0.2 285),
+      oklch(0.85 0.15 230),
+      oklch(0.95 0.05 200),
+      oklch(0.85 0.15 230),
+      oklch(0.7 0.2 285)
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer-text 4s linear infinite;
+  }
+
+  @keyframes sheen {
+    0% { transform: translateX(-150%) skewX(-20deg); }
+    100% { transform: translateX(250%) skewX(-20deg); }
+  }
+  .btn-sheen { position: relative; overflow: hidden; isolation: isolate; }
+  .btn-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      oklch(1 0 0 / 0.35),
+      transparent
+    );
+    transform: translateX(-150%) skewX(-20deg);
+    pointer-events: none;
+  }
+  .btn-sheen:hover::after {
+    animation: sheen 0.9s ease-out;
+  }
+
+  @keyframes float-y {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2px); }
+  }
+  .animate-float-y { animation: float-y 3s ease-in-out infinite; }
+
+  @keyframes logo-ring-spin {
+    to { transform: rotate(360deg); }
+  }
+  .logo-ring {
+    position: relative;
+    border-radius: 0.6rem;
+    padding: 2px;
+    background: conic-gradient(
+      from 0deg,
+      oklch(0.7 0.2 285),
+      oklch(0.78 0.18 230),
+      oklch(0.95 0.05 200),
+      oklch(0.7 0.2 285)
+    );
+    animation: logo-ring-spin 6s linear infinite;
+  }
 }
