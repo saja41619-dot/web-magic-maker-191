@@ -40,19 +40,21 @@ export function Header() {
         <Link
           to="/"
           onClick={handleHomeClick}
-          className="flex items-center gap-2 font-display text-lg font-bold"
+          className="group flex items-center gap-2 font-display text-lg font-bold"
         >
-          <img
-            src={photo}
-            alt={name}
-            width={32}
-            height={32}
-            loading="eager"
-            decoding="async"
-            sizes="32px"
-            className="h-8 w-8 rounded-lg object-cover shadow-glow ring-1 ring-border/40"
-          />
-          <span className="text-gradient">{name}</span>
+          <span className="logo-ring inline-flex transition-transform duration-300 group-hover:scale-110">
+            <img
+              src={photo}
+              alt={name}
+              width={32}
+              height={32}
+              loading="eager"
+              decoding="async"
+              sizes="32px"
+              className="block h-8 w-8 rounded-[0.5rem] object-cover"
+            />
+          </span>
+          <span className="animate-shimmer-text">{name}</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
@@ -62,13 +64,14 @@ export function Header() {
               to={item.to}
               onClick={item.to === "/" ? handleHomeClick : undefined}
               activeOptions={{ exact: item.to === "/" }}
-              activeProps={{ className: "text-foreground bg-secondary" }}
+              activeProps={{ className: "text-foreground bg-secondary/80 shadow-[inset_0_0_0_1px_oklch(0.7_0.2_285_/_0.4)]" }}
               inactiveProps={{ className: "text-muted-foreground hover:text-foreground" }}
-              className="group relative rounded-md px-4 py-2 text-sm font-medium transition-smooth hover:-translate-y-0.5 hover:bg-secondary/60"
+              className="group relative overflow-hidden rounded-md px-4 py-2 text-sm font-medium transition-smooth hover:-translate-y-0.5 hover:bg-secondary/60"
             >
+              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-primary/15 to-transparent transition-transform duration-500 group-hover:translate-x-full" />
               <span className="relative">
                 {item.label}
-                <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-gradient-primary transition-all duration-300 group-hover:w-full" />
+                <span className="absolute -bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-gradient-primary shadow-[0_0_8px_oklch(0.7_0.2_285_/_0.8)] transition-all duration-300 group-hover:w-full" />
               </span>
             </Link>
           ))}
@@ -76,7 +79,7 @@ export function Header() {
 
         <Link
           to="/contact"
-          className="hidden rounded-md bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:-translate-y-0.5 hover:opacity-90 hover:shadow-[0_0_24px_-4px_oklch(0.7_0.2_285_/_0.7)] md:inline-flex"
+          className="btn-sheen hidden rounded-md bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-[0_0_28px_-2px_oklch(0.7_0.2_285_/_0.8)] md:inline-flex"
         >
           Hire Me
         </Link>
