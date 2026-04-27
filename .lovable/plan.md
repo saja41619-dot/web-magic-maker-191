@@ -1,54 +1,38 @@
-## Admin Panel — Implementation Plan
+# Goal
 
-### 1. Backend Setup (Lovable Cloud / Supabase)
-Enable Lovable Cloud and create the following schema:
+"Create Account" click cheyyumbol admin login page (`/login`) il pokaruth. Athinu pakaram users-nu vendi oru puthiya `/auth` page (sign up + sign in tabs) varum. `/login` admin-nu mathram aayi nilkkum.
 
-- **`profiles`** — `id (uuid, FK auth.users)`, `display_name`, `created_at`. Auto-created via trigger on signup.
-- **`user_roles`** — separate table (security best practice). Enum `app_role` = `admin | user`. `has_role()` security-definer function for RLS checks.
-- **`contact_messages`** — `id`, `name`, `email`, `message`, `created_at`, `read (bool)`. Public INSERT, admin-only SELECT/UPDATE/DELETE.
-- **`projects`** — `id`, `title`, `description`, `image_url`, `tags (text[])`, `link`, `sort_order`, `created_at`. Public SELECT, admin-only write.
-- **`skills`** — `id`, `name`, `category`, `description` (the "why I use it" text from earlier modal), `sort_order`. Public SELECT, admin-only write.
-- **`site_settings`** — single-row table: `name`, `tagline`, `bio`, `photo_url`, `email`, `whatsapp`, `instagram`. Public SELECT, admin-only UPDATE.
+# Changes
 
-All tables get RLS enabled with policies using `has_role(auth.uid(), 'admin')`.
+### 1. New route: `src/routes/auth.tsx` (public)
+Two tabs — **Sign In** and **Sign Up**:
+- **Sign Up**: `supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })` → success toast "Check your email to verify".
+- **Sign In**: `supabase.auth.signInWithPassword(...)` → on success `navigate({ to: "/" })` (regular users go home, NOT to `/admin`).
+- "Forgot password?" link → `resetPasswordForEmail` with `redirectTo: ${origin}/reset-password`.
+- Zod validation (valid email + min 6 char password), inline error display, loading spinner, show/hide password toggle.
+- Visual style matches the existing `/login` card (gradient button, rounded card) for consistency.
+- `head()` with title "Sign in or Create Account" + `noindex` meta.
 
-### 2. Auth Setup
-- Email/password sign-in via Supabase (no signup UI — admin user seeded manually).
-- `/login` route with email + password form using Zod validation.
-- Auth state context wired into the router (`createRootRouteWithContext<{ auth }>`).
-- `_authenticated` pathless layout route with `beforeLoad` redirect-to-login guard.
-- Admin role checked in `_authenticated/admin` layout — non-admins redirected to `/`.
+Note: New signups are normal authenticated users only. Admin status lives in the `user_roles` table and is granted manually — signing up here does NOT make anyone an admin.
 
-### 3. Admin Routes (under `/admin`)
-- **`/admin`** — Dashboard: stats cards (total messages, unread messages, projects count, skills count) + recent messages preview.
-- **`/admin/messages`** — Table of contact messages, mark read/unread, delete, view full message in dialog.
-- **`/admin/projects`** — List + create/edit/delete dialog (title, description, tags, image URL, link).
-- **`/admin/skills`** — List + create/edit/delete dialog (name, category, description used by skill modal).
-- **`/admin/settings`** — Form to edit site settings (name, tagline, bio, photo URL, email, WhatsApp, Instagram).
-- Shared admin layout with sidebar nav (using existing `shadcn/ui` Sidebar) + logout button.
+### 2. Update `src/components/site/Header.tsx`
+In the `moreItems` array (line 23), change:
+```ts
+{ to: "/login", label: " Create Account", description: "Sign up or log in" }
+```
+to:
+```ts
+{ to: "/auth", label: "Create Account", description: "Sign up or sign in" }
+```
 
-### 4. Public Site Wiring
-Update existing public pages to read from DB instead of hardcoded data:
-- **Contact form** (`/contact`) — INSERT into `contact_messages` instead of `mailto:`.
-- **Work page** (`/work`) — fetch `skills` and `projects` from DB; existing search + skill modal continue to work, modal uses `description` from DB.
-- **Header / About / Footer** — read name, photo, social links from `site_settings`.
+### 3. Keep `/login` unchanged
+`/login` continues to be the admin-only sign-in page (redirects to `/admin`). It is no longer linked from the public nav.
 
-Use TanStack Query + `ensureQueryData` in route loaders (queryClient added to router context, `QueryClientProvider` in `__root.tsx`).
+# Out of scope
+- No changes to `src/lib/auth.tsx` provider — the existing `signIn` works as-is; `signUp` is called directly via the supabase client inside the new page.
+- No profile table / no additional user metadata (can be added later if you want username, avatar, etc.).
+- No changes to admin guard or `user_roles` logic.
 
-### 5. Seeding
-- Seed one admin user (you provide email/password during Cloud setup).
-- Seed `site_settings` with current hardcoded values (Mihraj, photo, email, WhatsApp, Instagram).
-- Migrate current hardcoded skills/projects from `work.tsx` into the DB.
-
-### 6. Validation & Security
-- All forms use Zod (client + server function validation).
-- RLS enforced server-side; client checks are UX only.
-- Admin role stored in `user_roles` (NOT on profiles) to prevent privilege escalation.
-- Server functions for admin mutations use `requireSupabaseAuth` middleware + role check.
-
-### Out of scope
-- File upload for project/photo images (use URL input for now).
-- Self-service signup (admin seeded manually — keeps panel locked down).
-- Email notifications when new contact message arrives.
-
-After approval: I'll enable Lovable Cloud, create the schema, build the auth + admin routes, and wire the public pages to the DB.
+# Files
+- **Create**: `src/routes/auth.tsx`
+- **Edit**: `src/components/site/Header.tsx` (one line in `moreItems`)
