@@ -20,7 +20,7 @@ const navItems = [
 ] as const;
 
 const moreItems = [
-  { to: "/login", label: "Users Create Account", description: "Sign up or log in" },
+  { to: "/login", label: " Create Account", description: "Sign up or log in" },
   { to: "/learnings", label: "Learnings", description: "Notes & tutorials" },
   { to: "/blog", label: "Blog", description: "Latest articles" },
   { to: "/faq", label: "FAQ", description: "Common questions" },
