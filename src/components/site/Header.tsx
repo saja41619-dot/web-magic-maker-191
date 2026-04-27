@@ -163,6 +163,33 @@ export function Header() {
               </span>
             </Link>
           ))}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              onMouseEnter={() => setHoverIdx(null)}
+              className="group inline-flex items-center gap-1 rounded-md px-4 py-2 text-sm font-medium text-muted-foreground outline-none transition-smooth hover:text-foreground focus-visible:text-foreground"
+            >
+              More
+              <ChevronDown className="h-4 w-4 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={8}
+              className="w-64 border-border/60 bg-background/95 backdrop-blur-xl"
+            >
+              {moreItems.map((item) => (
+                <DropdownMenuItem key={item.to} asChild>
+                  <Link
+                    to={item.to}
+                    className="flex flex-col items-start gap-0.5 rounded-md px-3 py-2 transition-smooth hover:translate-x-0.5"
+                  >
+                    <span className="text-sm font-medium text-foreground">{item.label}</span>
+                    <span className="text-xs text-muted-foreground">{item.description}</span>
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         <Link
