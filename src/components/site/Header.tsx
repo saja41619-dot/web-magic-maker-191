@@ -1,9 +1,15 @@
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X } from "lucide-react";
 import mihrajPhoto from "@/assets/mihraj.jpg";
 import { siteSettingsQuery } from "@/lib/queries";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navItems = [
   { to: "/", label: "Home" },
@@ -11,6 +17,13 @@ const navItems = [
   { to: "/work", label: "Work" },
   { to: "/resume", label: "Resume" },
   { to: "/contact", label: "Contact" },
+] as const;
+
+const moreItems = [
+  { to: "/login", label: "Users Create Account", description: "Sign up or log in" },
+  { to: "/learnings", label: "Learnings", description: "Notes & tutorials" },
+  { to: "/blog", label: "Blog", description: "Latest articles" },
+  { to: "/faq", label: "FAQ", description: "Common questions" },
 ] as const;
 
 type Rect = { left: number; width: number } | null;
