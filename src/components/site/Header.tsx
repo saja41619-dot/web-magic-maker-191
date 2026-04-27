@@ -1,9 +1,15 @@
 import { Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Menu, X } from "lucide-react";
+import { ChevronDown, Menu, X } from "lucide-react";
 import mihrajPhoto from "@/assets/mihraj.jpg";
 import { siteSettingsQuery } from "@/lib/queries";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const navItems = [
   { to: "/", label: "Home" },
@@ -11,6 +17,13 @@ const navItems = [
   { to: "/work", label: "Work" },
   { to: "/resume", label: "Resume" },
   { to: "/contact", label: "Contact" },
+] as const;
+
+const moreItems = [
+  { to: "/login", label: "Users Create Account", description: "Sign up or log in" },
+  { to: "/learnings", label: "Learnings", description: "Notes & tutorials" },
+  { to: "/blog", label: "Blog", description: "Latest articles" },
+  { to: "/faq", label: "FAQ", description: "Common questions" },
 ] as const;
 
 type Rect = { left: number; width: number } | null;
@@ -150,6 +163,33 @@ export function Header() {
               </span>
             </Link>
           ))}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              onMouseEnter={() => setHoverIdx(null)}
+              className="group inline-flex items-center gap-1 rounded-md px-4 py-2 text-sm font-medium text-muted-foreground outline-none transition-smooth hover:text-foreground focus-visible:text-foreground"
+            >
+              More
+              <ChevronDown className="h-4 w-4 transition-transform duration-300 group-data-[state=open]:rotate-180" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={8}
+              className="w-64 border-border/60 bg-background/95 backdrop-blur-xl"
+            >
+              {moreItems.map((item) => (
+                <DropdownMenuItem key={item.to} asChild>
+                  <Link
+                    to={item.to}
+                    className="flex flex-col items-start gap-0.5 rounded-md px-3 py-2 transition-smooth hover:translate-x-0.5"
+                  >
+                    <span className="text-sm font-medium text-foreground">{item.label}</span>
+                    <span className="text-xs text-muted-foreground">{item.description}</span>
+                  </Link>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </nav>
 
         <Link
@@ -191,6 +231,21 @@ export function Header() {
                 className="animate-fade-in rounded-md px-4 py-3 text-base font-medium transition-smooth hover:translate-x-1 hover:bg-secondary/60"
               >
                 {item.label}
+              </Link>
+            ))}
+            <div className="mt-3 px-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+              More
+            </div>
+            {moreItems.map((item, i) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => setOpen(false)}
+                style={{ animationDelay: `${(navItems.length + i) * 40}ms` }}
+                className="animate-fade-in flex flex-col rounded-md px-4 py-2.5 transition-smooth hover:translate-x-1 hover:bg-secondary/60"
+              >
+                <span className="text-sm font-medium text-foreground">{item.label}</span>
+                <span className="text-xs text-muted-foreground">{item.description}</span>
               </Link>
             ))}
             <Link
