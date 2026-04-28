@@ -39,7 +39,7 @@ function AuthPage() {
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      void navigate({ to: "/", replace: true });
+      void navigate({ to: "/dashboard", replace: true });
     }
   }, [loading, isAuthenticated, navigate]);
 
@@ -94,7 +94,7 @@ function AuthPage() {
         setPassword("");
       } else {
         await signIn(parsed.data.email, parsed.data.password);
-        void navigate({ to: "/", replace: true });
+        void navigate({ to: "/dashboard", replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
