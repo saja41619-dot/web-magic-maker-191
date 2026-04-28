@@ -21,6 +21,7 @@ const navItems = [
 
 const moreItems = [
   { to: "/auth", label: "Create Account", description: "Sign up or sign in" },
+  { to: "/dashboard", label: "My Dashboard", description: "Your account & profile" },
   { to: "/learnings", label: "Learnings", description: "Notes & tutorials" },
   { to: "/blog", label: "Blog", description: "Latest articles" },
   { to: "/faq", label: "FAQ", description: "Common questions" },
