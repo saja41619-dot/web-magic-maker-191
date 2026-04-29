@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/site/Layout";
-import { ArrowUpRight, Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowUpRight, Search, X, Heart } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { projectsQuery, skillsQuery } from "@/lib/queries";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 
 const workSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -43,9 +46,65 @@ function WorkPage() {
   const { q } = Route.useSearch();
   const navigate = useNavigate({ from: "/work" });
   const [activeSkillId, setActiveSkillId] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuth();
+  const [favorites, setFavorites] = useState<Map<string, string>>(new Map());
 
   const { data: skills = [] } = useQuery(skillsQuery());
   const { data: projects = [] } = useQuery(projectsQuery());
+
+  useEffect(() => {
+    if (!user) {
+      setFavorites(new Map());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("user_favorites")
+        .select("id, project_id")
+        .eq("user_id", user.id);
+      if (cancelled) return;
+      const map = new Map<string, string>();
+      for (const r of data ?? []) map.set(r.project_id, r.id);
+      setFavorites(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const toggleFavorite = async (projectId: string) => {
+    if (!isAuthenticated || !user) {
+      toast.error("Sign in to save favorites");
+      return;
+    }
+    const existing = favorites.get(projectId);
+    if (existing) {
+      const { error } = await supabase.from("user_favorites").delete().eq("id", existing);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      const next = new Map(favorites);
+      next.delete(projectId);
+      setFavorites(next);
+    } else {
+      const { data, error } = await supabase
+        .from("user_favorites")
+        .insert({ user_id: user.id, project_id: projectId })
+        .select("id")
+        .single();
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      const next = new Map(favorites);
+      next.set(projectId, data.id);
+      setFavorites(next);
+      toast.success("Added to favorites");
+    }
+  };
+
 
   const query = q.trim().toLowerCase();
 
