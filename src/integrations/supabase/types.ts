@@ -22,6 +22,7 @@ export type Database = {
           message: string
           name: string
           read: boolean
+          user_id: string | null
         }
         Insert: {
           created_at?: string
@@ -30,6 +31,7 @@ export type Database = {
           message: string
           name: string
           read?: boolean
+          user_id?: string | null
         }
         Update: {
           created_at?: string
@@ -38,25 +40,35 @@ export type Database = {
           message?: string
           name?: string
           read?: boolean
+          user_id?: string | null
         }
         Relationships: []
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           created_at: string
           display_name: string | null
+          email_notifications: boolean
           id: string
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           display_name?: string | null
+          email_notifications?: boolean
           id: string
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
           display_name?: string | null
+          email_notifications?: boolean
           id?: string
           updated_at?: string
         }
@@ -166,6 +178,35 @@ export type Database = {
           why?: string
         }
         Relationships: []
+      }
+      user_favorites: {
+        Row: {
+          created_at: string
+          id: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_favorites_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
