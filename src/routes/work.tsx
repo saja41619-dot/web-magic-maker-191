@@ -1,10 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/site/Layout";
-import { ArrowUpRight, Search, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowUpRight, Search, X, Heart } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { projectsQuery, skillsQuery } from "@/lib/queries";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 
 const workSearchSchema = z.object({
   q: fallback(z.string(), "").default(""),
@@ -43,9 +46,65 @@ function WorkPage() {
   const { q } = Route.useSearch();
   const navigate = useNavigate({ from: "/work" });
   const [activeSkillId, setActiveSkillId] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuth();
+  const [favorites, setFavorites] = useState<Map<string, string>>(new Map());
 
   const { data: skills = [] } = useQuery(skillsQuery());
   const { data: projects = [] } = useQuery(projectsQuery());
+
+  useEffect(() => {
+    if (!user) {
+      setFavorites(new Map());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from("user_favorites")
+        .select("id, project_id")
+        .eq("user_id", user.id);
+      if (cancelled) return;
+      const map = new Map<string, string>();
+      for (const r of data ?? []) map.set(r.project_id, r.id);
+      setFavorites(map);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const toggleFavorite = async (projectId: string) => {
+    if (!isAuthenticated || !user) {
+      toast.error("Sign in to save favorites");
+      return;
+    }
+    const existing = favorites.get(projectId);
+    if (existing) {
+      const { error } = await supabase.from("user_favorites").delete().eq("id", existing);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      const next = new Map(favorites);
+      next.delete(projectId);
+      setFavorites(next);
+    } else {
+      const { data, error } = await supabase
+        .from("user_favorites")
+        .insert({ user_id: user.id, project_id: projectId })
+        .select("id")
+        .single();
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      const next = new Map(favorites);
+      next.set(projectId, data.id);
+      setFavorites(next);
+      toast.success("Added to favorites");
+    }
+  };
+
 
   const query = q.trim().toLowerCase();
 
@@ -180,52 +239,69 @@ function WorkPage() {
           </div>
         ) : (
           <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((p) => (
-              <a
-                key={p.id}
-                href={p.link ?? "#"}
-                target={p.link ? "_blank" : undefined}
-                rel={p.link ? "noopener noreferrer" : undefined}
-                className="group overflow-hidden rounded-2xl border border-border bg-card transition-smooth hover:-translate-y-1 hover:border-primary/50 hover:shadow-glow"
-              >
+            {projects.map((p) => {
+              const isFav = favorites.has(p.id);
+              return (
                 <div
-                  className={`relative aspect-[4/3] flex items-center justify-center ${
-                    p.image_url ? "" : `bg-gradient-to-br ${fallbackGradient}`
-                  }`}
+                  key={p.id}
+                  className="group relative overflow-hidden rounded-2xl border border-border bg-card transition-smooth hover:-translate-y-1 hover:border-primary/50 hover:shadow-glow"
                 >
-                  {p.image_url ? (
-                    <img
-                      src={p.image_url}
-                      alt={p.title}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover"
+                  <button
+                    type="button"
+                    onClick={() => void toggleFavorite(p.id)}
+                    aria-label={isFav ? "Remove from favorites" : "Add to favorites"}
+                    className="absolute left-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 text-foreground backdrop-blur transition-smooth hover:scale-110"
+                  >
+                    <Heart
+                      className={`h-4 w-4 ${isFav ? "fill-primary text-primary" : "text-muted-foreground"}`}
                     />
-                  ) : (
-                    <span className="font-display text-xl font-bold text-foreground/60">
-                      {p.title}
-                    </span>
-                  )}
-                  <div className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 backdrop-blur transition-smooth group-hover:opacity-100">
-                    <ArrowUpRight className="h-4 w-4" />
-                  </div>
+                  </button>
+                  <a
+                    href={p.link ?? "#"}
+                    target={p.link ? "_blank" : undefined}
+                    rel={p.link ? "noopener noreferrer" : undefined}
+                    className="block"
+                  >
+                    <div
+                      className={`relative aspect-[4/3] flex items-center justify-center ${
+                        p.image_url ? "" : `bg-gradient-to-br ${fallbackGradient}`
+                      }`}
+                    >
+                      {p.image_url ? (
+                        <img
+                          src={p.image_url}
+                          alt={p.title}
+                          loading="lazy"
+                          decoding="async"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="font-display text-xl font-bold text-foreground/60">
+                          {p.title}
+                        </span>
+                      )}
+                      <div className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 text-foreground opacity-0 backdrop-blur transition-smooth group-hover:opacity-100">
+                        <ArrowUpRight className="h-4 w-4" />
+                      </div>
+                    </div>
+                    <div className="p-5">
+                      <h3 className="font-semibold">{p.title}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {p.tags.map((t) => (
+                          <span
+                            key={t}
+                            className="rounded-md bg-secondary/60 px-2 py-0.5 text-xs text-muted-foreground"
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </a>
                 </div>
-                <div className="p-5">
-                  <h3 className="font-semibold">{p.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{p.description}</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {p.tags.map((t) => (
-                      <span
-                        key={t}
-                        className="rounded-md bg-secondary/60 px-2 py-0.5 text-xs text-muted-foreground"
-                      >
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </a>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>
