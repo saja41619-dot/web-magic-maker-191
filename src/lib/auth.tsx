@@ -85,19 +85,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    void supabase.auth.getSession().then(async ({ data }) => {
+    void supabase.auth.getSession().then(({ data }) => {
       if (data.session && isExpired()) {
-        await supabase.auth.signOut();
+        void supabase.auth.signOut();
         setSession(null);
         setLoading(false);
         return;
       }
       setSession(data.session);
-      if (data.session?.user) {
-        setIsAdmin(await checkAdmin(data.session.user.id));
-        scheduleExpiry();
-      }
       setLoading(false);
+      if (data.session?.user) {
+        scheduleExpiry();
+        // Defer admin check — don't block initial render on it.
+        setTimeout(() => {
+          void checkAdmin(data.session!.user.id).then(setIsAdmin);
+        }, 0);
+      }
     });
 
     return () => {
