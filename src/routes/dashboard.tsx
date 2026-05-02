@@ -30,15 +30,31 @@ function DashboardRoute() {
     }
   }, [loading, isAuthenticated, navigate]);
 
-  if (loading || !isAuthenticated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  // While auth is restoring, show a skeleton shell instead of a blank spinner —
+  // feels instant and avoids the long "white loading" perception.
+  if (loading) return <DashboardSkeleton />;
+  if (!isAuthenticated) return <DashboardSkeleton />;
 
   return <DashboardContent />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
+      <div className="mb-6 h-4 w-24 animate-pulse rounded bg-primary/10" />
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-elegant sm:p-8">
+        <div className="flex items-center gap-4">
+          <div className="h-16 w-16 animate-pulse rounded-full bg-primary/10" />
+          <div className="space-y-2">
+            <div className="h-6 w-48 animate-pulse rounded bg-primary/10" />
+            <div className="h-4 w-64 animate-pulse rounded bg-primary/10" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-8 h-10 w-full animate-pulse rounded-md bg-primary/10" />
+      <div className="mt-6 h-64 w-full animate-pulse rounded-2xl bg-primary/5" />
+    </div>
+  );
 }
 
 function DashboardContent() {
