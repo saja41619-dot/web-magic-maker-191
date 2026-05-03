@@ -34,6 +34,7 @@ import {
   Volume2,
   ChevronDown,
   MessageSquare,
+  Users, // Added for New Group icon
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
@@ -43,6 +44,7 @@ import { usePresenceHeartbeat } from "@/lib/usePresence";
 import { CallManager, CallState, CallType } from "@/lib/callManager";
 import { CallUI } from "@/components/CallUI";
 import { cn } from "@/lib/utils";
+import { NewGroupModal } from "./NewGroupModal"; // Import NewGroupModal
 
 interface Profile {
   id: string;
@@ -111,6 +113,7 @@ export function ConnectTab() {
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [activePeer, setActivePeer] = useState<Profile | null>(null);
+  const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
   const [loading, setLoading] = useState(true);
 
   // Load users + presence + summaries
@@ -223,6 +226,16 @@ export function ConnectTab() {
                 className="h-10 w-full rounded-xl border border-border bg-card pl-9 pr-3 text-sm outline-none focus:border-primary"
               />
             </div>
+            <button
+              onClick={() => setShowNewGroupModal(true)}
+              className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200 hover:bg-secondary/50 mt-2"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Users className="h-6 w-6" />
+              </div>
+              <p className="truncate text-sm font-semibold">New Group</p>
+            </button>
+
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             <h3 className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
@@ -334,6 +347,12 @@ export function ConnectTab() {
             </div>
           )}
         </div>
+
+        {/* New Group Modal */}
+        {showNewGroupModal && (
+          <NewGroupModal allUsers={users} onClose={() => setShowNewGroupModal(false)} />
+        )}
+
       </div>
     </section>
   );
