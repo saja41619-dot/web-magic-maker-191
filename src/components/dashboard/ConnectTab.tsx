@@ -39,6 +39,8 @@ import EmojiPicker, { Theme } from "emoji-picker-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePresenceHeartbeat } from "@/lib/usePresence";
+import { CallManager, CallState, CallType } from "@/lib/callManager";
+import { CallUI } from "@/components/CallUI";
 import { cn } from "@/lib/utils";
 
 interface Profile {
@@ -346,6 +348,26 @@ function ChatWindow({
   const [showDisappearingOptions, setShowDisappearingOptions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Call State Management
+  const [callState, setCallState] = useState<CallState>("idle");
+  const callStateRef = useRef<CallState>("idle");
+
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
+
+  const [callType, setCallType] = useState<CallType>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
+  const callManagerRef = useRef<CallManager | null>(null);
+  if (!callManagerRef.current) {
+    callManagerRef.current = new CallManager();
+  }
+  const callTimerRef = useRef<number | null>(null);
+  const signalingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSent = useRef(0);
@@ -432,6 +454,85 @@ function ChatWindow({
     };
   }, [user, peer.id]);
 
+  // Initialize CallManager listeners
+  useEffect(() => {
+    const cm = callManagerRef.current!;
+    cm.onRemoteStream((stream) => setRemoteStream(stream));
+    cm.onStateChange((state) => {
+      setCallState(state);
+      if (state === "active") {
+        setCallDuration(0);
+        callTimerRef.current = window.setInterval(() => {
+          setCallDuration((d) => d + 1);
+        }, 1000);
+      } else if (state === "ended" || state === "idle") {
+        if (callTimerRef.current) clearInterval(callTimerRef.current);
+        setCallType(null);
+        setLocalStream(null);
+        setRemoteStream(null);
+        setCallDuration(0);
+      }
+    });
+
+    return () => {
+      if (callTimerRef.current) clearInterval(callTimerRef.current);
+      cm.endCall();
+    };
+  }, []);
+
+  // Call Signaling via Supabase Broadcast
+  useEffect(() => {
+    if (!user) return;
+    const topic = `call-signaling:${[user.id, peer.id].sort().join(':')}`;
+    const signalingCh = supabase.channel(topic, {
+      config: { broadcast: { self: false } },
+    });
+    signalingChannelRef.current = signalingCh;
+
+    signalingCh
+      .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
+        if (callStateRef.current !== "idle" && callStateRef.current !== "ended") return; // Busy
+        const { offer, callType: incomingType } = payload;
+        setCallType(incomingType);
+        const answer = await callManagerRef.current!.answerCall(offer, incomingType);
+        setLocalStream(callManagerRef.current!.getLocalStream());
+        signalingCh.send({
+          type: "broadcast",
+          event: "call-answer",
+          payload: { answer },
+        });
+
+        callManagerRef.current!.getIceCandidates((candidate) => {
+          if (candidate) {
+            signalingCh.send({
+              type: "broadcast",
+              event: "ice-candidate",
+              payload: { candidate },
+            });
+          }
+        });
+      })
+      .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
+        const { answer } = payload;
+        await callManagerRef.current!.handleRemoteAnswer(answer);
+      })
+      .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
+        const { candidate } = payload;
+        if (candidate) {
+          await callManagerRef.current!.addIceCandidate(candidate);
+        }
+      })
+      .on("broadcast", { event: "call-end" }, () => {
+        callManagerRef.current!.endCall();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(signalingCh);
+      signalingChannelRef.current = null;
+    };
+  }, [user, peer.id]);
+
   // Scroll to bottom on new messages
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -508,6 +609,37 @@ function ChatWindow({
     if (!message) return;
     const forwardText = `[Forwarded]\n${message.content || "(Attachment)"}`;
     await sendMessage({ content: forwardText });
+  };
+
+  const startCall = async (type: "voice" | "video") => {
+    if (!signalingChannelRef.current) return;
+    setCallType(type);
+    const offer = await callManagerRef.current!.initiateCall(type);
+    setLocalStream(callManagerRef.current!.getLocalStream());
+
+    signalingChannelRef.current.send({
+      type: "broadcast",
+      event: "call-offer",
+      payload: { offer, callType: type },
+    });
+
+    callManagerRef.current!.getIceCandidates((candidate) => {
+      if (candidate) {
+        signalingChannelRef.current?.send({
+          type: "broadcast",
+          event: "ice-candidate",
+          payload: { candidate },
+        });
+      }
+    });
+  };
+
+  const endCall = () => {
+    callManagerRef.current!.endCall();
+    signalingChannelRef.current?.send({
+      type: "broadcast",
+      event: "call-end",
+    });
   };
 
   const blockUser = async () => {
@@ -675,11 +807,17 @@ function ChatWindow({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <button className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors">
+            <button 
+              onClick={() => startCall("voice")}
+              className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors"
+            >
               <Phone className="h-4 w-4" />
               <span className="text-xs font-medium">Voice call</span>
             </button>
-            <button className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors">
+            <button 
+              onClick={() => startCall("video")}
+              className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors"
+            >
               <VideoIcon className="h-4 w-4" />
               <span className="text-xs font-medium">Video call</span>
             </button>
@@ -1007,6 +1145,19 @@ function ChatWindow({
           )}
         </div>
       </div>
+
+      {callState !== "idle" && callState !== "ended" && callType && callManagerRef.current && (
+        <CallUI
+          localStream={localStream}
+          remoteStream={remoteStream}
+          callType={callType}
+          callDuration={callDuration}
+          onEndCall={endCall}
+          onToggleMic={(enabled) => callManagerRef.current!.toggleAudio(enabled)}
+          onToggleVideo={(enabled) => callManagerRef.current!.toggleVideo(enabled)}
+          peerName={peer.display_name ?? "User"}
+        />
+      )}
     </>
   );
 }
