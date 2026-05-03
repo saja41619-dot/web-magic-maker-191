@@ -14,6 +14,7 @@ import {
   Bell,
   Activity,
   LifeBuoy,
+  MessageCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -23,6 +24,7 @@ import { FavoritesTab } from "@/components/dashboard/FavoritesTab";
 import { SettingsTab } from "@/components/dashboard/SettingsTab";
 import { LearningTab } from "@/components/dashboard/LearningTab";
 import { ServicesTab } from "@/components/dashboard/ServicesTab";
+import { ChatTab } from "@/components/dashboard/ChatTab";
 import { NotificationsTab } from "@/components/dashboard/NotificationsTab";
 import { ActivityTab } from "@/components/dashboard/ActivityTab";
 import { SupportTab } from "@/components/dashboard/SupportTab";
@@ -41,6 +43,7 @@ export const Route = createFileRoute("/dashboard")({
 
 type TabKey =
   | "profile"
+  | "chat"
   | "learning"
   | "services"
   | "messages"
@@ -52,6 +55,7 @@ type TabKey =
 
 const NAV_ITEMS: { key: TabKey; label: string; icon: typeof UserIcon }[] = [
   { key: "profile", label: "Profile", icon: UserIcon },
+  { key: "chat", label: "Chat", icon: MessageCircle },
   { key: "learning", label: "Learning", icon: BookOpen },
   { key: "services", label: "Services", icon: Briefcase },
   { key: "messages", label: "Messages", icon: Mail },
@@ -265,6 +269,7 @@ function DashboardContent() {
               </h1>
             </div>
             {activeTab === "profile" && <ProfileTab />}
+            {activeTab === "chat" && <ChatTab />}
             {activeTab === "learning" && <LearningTab />}
             {activeTab === "services" && <ServicesTab />}
             {activeTab === "messages" && <MessagesTab />}
