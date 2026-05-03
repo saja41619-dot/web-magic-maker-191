@@ -55,6 +55,7 @@ type TabKey =
 
 const NAV_ITEMS: { key: TabKey; label: string; icon: typeof UserIcon }[] = [
   { key: "profile", label: "Profile", icon: UserIcon },
+  { key: "chat", label: "Chat", icon: MessageCircle },
   { key: "learning", label: "Learning", icon: BookOpen },
   { key: "services", label: "Services", icon: Briefcase },
   { key: "messages", label: "Messages", icon: Mail },
