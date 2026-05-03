@@ -1,27 +1,28 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Phone,
-  VideoIcon,
-  Mic,
-  MicOff,
-  Video,
-  VideoOff,
-  PhoneOff,
-  Grid,
+import { 
+  Mic, 
+  MicOff, 
+  Video, 
+  VideoOff, 
+  PhoneOff, 
+  Maximize2, 
+  Minimize2,
   Volume2,
   VolumeX,
+  User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CallType } from "@/lib/callManager";
 
 interface CallUIProps {
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
-  callType: "voice" | "video";
+  callType: CallType;
   callDuration: number;
   onEndCall: () => void;
   onToggleMic: (enabled: boolean) => void;
   onToggleVideo: (enabled: boolean) => void;
-  peerName?: string;
+  peerName: string;
 }
 
 export function CallUI({
@@ -32,14 +33,14 @@ export function CallUI({
   onEndCall,
   onToggleMic,
   onToggleVideo,
-  peerName = "User",
+  peerName,
 }: CallUIProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const [micEnabled, setMicEnabled] = useState(true);
-  const [videoEnabled, setVideoEnabled] = useState(callType === "video");
-  const [speakerEnabled, setSpeakerEnabled] = useState(true);
-  const [layout, setLayout] = useState<"pip" | "grid">("pip");
+  const [videoEnabled, setVideoEnabled] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -53,211 +54,97 @@ export function CallUI({
     }
   }, [remoteStream]);
 
-  const toggleMic = () => {
-    const newState = !micEnabled;
-    setMicEnabled(newState);
-    onToggleMic(newState);
-  };
-
-  const toggleVideo = () => {
-    const newState = !videoEnabled;
-    setVideoEnabled(newState);
-    onToggleVideo(newState);
-  };
-
   const formatDuration = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
+    const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    if (hrs > 0) {
-      return `${hrs}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-    }
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  if (callType === "voice") {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10 backdrop-blur-sm">
-        <div className="w-full max-w-md rounded-3xl bg-gradient-to-br from-card to-card/80 shadow-2xl p-8 text-center space-y-6">
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold">{peerName}</h2>
-            <p className="text-lg font-mono text-primary">{formatDuration(callDuration)}</p>
-            <p className="text-sm text-muted-foreground">Voice call in progress...</p>
-          </div>
+  const handleToggleMic = () => {
+    const next = !micEnabled;
+    setMicEnabled(next);
+    onToggleMic(next);
+  };
 
-          <div className="relative h-24 w-24 mx-auto">
-            <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse" />
-            <div className="absolute inset-2 rounded-full bg-primary/40 animate-pulse [animation-delay:0.15s]" />
-            <div className="relative h-full w-full rounded-full bg-gradient-primary flex items-center justify-center">
-              <Mic className="h-8 w-8 text-primary-foreground" />
-            </div>
-          </div>
+  const handleToggleVideo = () => {
+    const next = !videoEnabled;
+    setVideoEnabled(next);
+    onToggleVideo(next);
+  };
 
-          <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={toggleMic}
-              className={cn(
-                "flex h-14 w-14 items-center justify-center rounded-full transition-all",
-                micEnabled
-                  ? "bg-secondary hover:bg-secondary/80"
-                  : "bg-destructive hover:bg-destructive/90"
-              )}
-            >
-              {micEnabled ? (
-                <Mic className="h-5 w-5" />
-              ) : (
-                <MicOff className="h-5 w-5" />
-              )}
-            </button>
-            <button
-              onClick={() => setSpeakerEnabled(!speakerEnabled)}
-              className={cn(
-                "flex h-14 w-14 items-center justify-center rounded-full transition-all",
-                speakerEnabled
-                  ? "bg-secondary hover:bg-secondary/80"
-                  : "bg-destructive hover:bg-destructive/90"
-              )}
-            >
-              {speakerEnabled ? (
-                <Volume2 className="h-5 w-5" />
-              ) : (
-                <VolumeX className="h-5 w-5" />
-              )}
-            </button>
-            <button
-              onClick={onEndCall}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90 transition-all shadow-lg"
-            >
-              <PhoneOff className="h-5 w-5 text-white" />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Video call UI
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black">
-      <div className="flex-1 relative overflow-hidden bg-black">
-        {/* Remote Video (Full screen) */}
-        {remoteStream ? (
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10">
-            <div className="text-center space-y-3">
-              <div className="relative h-20 w-20 mx-auto">
-                <div className="absolute inset-0 rounded-full bg-primary/20 animate-pulse" />
-                <div className="absolute inset-2 rounded-full bg-primary/40 animate-pulse [animation-delay:0.15s]" />
-                <div className="relative h-full w-full rounded-full bg-gradient-primary flex items-center justify-center">
-                  <VideoIcon className="h-8 w-8 text-primary-foreground" />
-                </div>
-              </div>
-              <p className="text-white/70">Connecting...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Local Video (PiP) */}
-        {layout === "pip" && localStream && (
-          <div className="absolute bottom-4 right-4 w-32 h-32 rounded-lg overflow-hidden border-4 border-white/20 shadow-lg">
+    <div className={cn(
+      "fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/95 backdrop-blur-xl transition-all duration-500",
+      isFullscreen ? "p-0" : "p-4 md:p-10"
+    )}>
+      <div className={cn(
+        "relative flex h-full w-full max-w-5xl flex-col overflow-hidden bg-card shadow-2xl transition-all duration-500",
+        isFullscreen ? "rounded-none" : "rounded-3xl border border-border"
+      )}>
+        {/* Remote Video (Main) */}
+        <div className="relative flex-1 bg-black">
+          {callType === "video" && remoteStream ? (
             <video
-              ref={localVideoRef}
+              ref={remoteVideoRef}
               autoPlay
               playsInline
-              muted
-              className="w-full h-full object-cover"
+              className="h-full w-full object-cover"
             />
-          </div>
-        )}
-
-        {/* Grid Layout */}
-        {layout === "grid" && (
-          <div className="absolute inset-0 grid grid-cols-2 gap-2 p-2">
-            <div className="rounded-lg overflow-hidden">
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                className="w-full h-full object-cover"
-              />
+          ) : (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-6">
+              <div className="relative">
+                <div className="flex h-32 w-32 items-center justify-center rounded-full bg-gradient-primary text-5xl font-bold text-white shadow-glow animate-pulse">
+                  {peerName.charAt(0).toUpperCase()}
+                </div>
+                <div className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-background border-4 border-black text-primary">
+                   <User className="h-5 w-5" />
+                </div>
+              </div>
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-white">{peerName}</h2>
+                <p className="mt-2 text-primary animate-pulse font-medium">
+                  {remoteStream ? "Connected" : "Calling..."}
+                </p>
+              </div>
             </div>
-            <div className="rounded-lg overflow-hidden bg-black border-2 border-white/20">
+          )}
+
+          {/* Local Video (PIP) */}
+          {callType === "video" && localStream && (
+            <div className="absolute right-6 top-6 h-32 w-24 overflow-hidden rounded-xl border-2 border-white/20 bg-black shadow-lg md:h-48 md:w-36">
               <video
                 ref={localVideoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover"
+                className={cn("h-full w-full object-cover", !videoEnabled && "hidden")}
               />
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Header */}
-      <div className="bg-black/80 backdrop-blur px-6 py-3 flex items-center justify-between">
-        <div className="space-y-1">
-          <h2 className="text-white font-semibold">{peerName}</h2>
-          <p className="text-xs text-white/60 font-mono">{formatDuration(callDuration)}</p>
+          )}
         </div>
-        <button
-          onClick={() => setLayout(layout === "pip" ? "grid" : "pip")}
-          className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
-          title="Toggle layout"
-        >
-          <Grid className="h-5 w-5" />
-        </button>
-      </div>
 
-      {/* Controls */}
-      <div className="bg-gradient-to-t from-black via-black/80 to-transparent px-6 py-6 flex items-center justify-center gap-4">
-        <button
-          onClick={toggleMic}
-          className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-full transition-all shadow-lg",
-            micEnabled
-              ? "bg-white/20 hover:bg-white/30 text-white"
-              : "bg-destructive hover:bg-destructive/90"
-          )}
-          title={micEnabled ? "Mute" : "Unmute"}
-        >
-          {micEnabled ? (
-            <Mic className="h-5 w-5" />
-          ) : (
-            <MicOff className="h-5 w-5" />
-          )}
-        </button>
-
-        <button
-          onClick={toggleVideo}
-          className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-full transition-all shadow-lg",
-            videoEnabled
-              ? "bg-white/20 hover:bg-white/30 text-white"
-              : "bg-destructive hover:bg-destructive/90"
-          )}
-          title={videoEnabled ? "Turn off camera" : "Turn on camera"}
-        >
-          {videoEnabled ? (
-            <Video className="h-5 w-5" />
-          ) : (
-            <VideoOff className="h-5 w-5" />
-          )}
-        </button>
-
-        <button
-          onClick={onEndCall}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive hover:bg-destructive/90 transition-all shadow-lg"
-          title="End call"
-        >
-          <PhoneOff className="h-5 w-5 text-white" />
-        </button>
+        {/* Controls */}
+        <div className="bg-card/50 px-6 py-8 backdrop-blur-md">
+          <div className="mx-auto flex max-w-sm items-center justify-center gap-6 md:gap-10">
+            <button
+              onClick={handleToggleMic}
+              className={cn("h-14 w-14 rounded-full flex items-center justify-center transition-all", micEnabled ? "bg-secondary" : "bg-destructive text-white")}
+            >
+              {micEnabled ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+            </button>
+            <button
+              onClick={onEndCall}
+              className="h-16 w-16 rounded-full bg-destructive text-white shadow-lg flex items-center justify-center"
+            >
+              <PhoneOff className="h-8 w-8" />
+            </button>
+            {callType === "video" && (
+              <button onClick={handleToggleVideo} className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center">
+                {videoEnabled ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

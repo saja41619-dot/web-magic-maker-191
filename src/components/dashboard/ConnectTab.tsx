@@ -912,7 +912,12 @@ function ChatWindow({
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 space-y-4 overflow-y-auto bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent p-4 scrollbar-thin scrollbar-thumb-border"
+        className="flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border relative"
+        style={{
+          backgroundColor: "#0b141a",
+          backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
+          backgroundBlendMode: "overlay",
+        }}
       >
         {filteredMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
@@ -1212,12 +1217,17 @@ function MessageItem({
   return (
     <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
       <div className="relative group">
+        {/* Message Tail */}
+        <div className={cn(
+          "absolute top-0 h-4 w-4",
+          mine ? "-right-2 bg-gradient-to-br from-primary to-primary/80 [clip-path:polygon(0_0,0_100%,100%_0)]" : "-left-2 bg-card border-l border-t border-border [clip-path:polygon(100%_0,100%_100%,0_0)]"
+        )} />
         <div
           className={cn(
-            "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-elegant transition-all",
+            "relative z-10 max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-elegant transition-all",
             mine
               ? "rounded-tr-none bg-gradient-primary text-primary-foreground"
-              : "rounded-tl-none bg-card border border-border text-foreground",
+              : "rounded-tl-none bg-card border border-border text-foreground backdrop-blur-sm",
           )}
         >
           {isPinned && (
