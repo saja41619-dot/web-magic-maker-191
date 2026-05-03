@@ -200,8 +200,11 @@ export function ConnectTab() {
   };
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-elegant">
-      <div className="grid h-[calc(100vh-220px)] min-h-[500px] grid-cols-1 md:grid-cols-[320px_1fr]">
+    <section className={cn(
+      "overflow-hidden border-border bg-card h-full",
+      "rounded-none border-0 shadow-none md:rounded-2xl md:border md:shadow-elegant lg:rounded-none lg:border-0 lg:shadow-none"
+    )}>
+      <div className="grid h-full min-h-[500px] grid-cols-1 md:grid-cols-[320px_1fr]">
         {/* Sidebar list */}
         <aside
           className={cn(

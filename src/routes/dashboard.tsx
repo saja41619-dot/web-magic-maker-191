@@ -108,6 +108,8 @@ function DashboardContent() {
   const [headerAvatar, setHeaderAvatar] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("profile");
 
+  const isConnectTab = activeTab === "connect";
+
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -139,11 +141,20 @@ function DashboardContent() {
   const initial = (headerName || user?.email || "U").trim().charAt(0).toUpperCase();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-24 lg:pb-0">
-      <div className="mx-auto flex max-w-7xl gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <div className={cn(
+      "min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-24 lg:pb-0",
+      isConnectTab && "lg:h-screen lg:overflow-hidden"
+    )}>
+      <div className={cn(
+        "mx-auto flex gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
+        isConnectTab ? "max-w-none w-full h-full p-0 gap-0" : "max-w-7xl"
+      )}>
         {/* Desktop sidebar */}
-        <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:shrink-0">
-          <div className="sticky top-6 space-y-4">
+        <aside className={cn(
+          "hidden lg:flex lg:w-64 lg:flex-col lg:shrink-0",
+          isConnectTab && "border-r border-border bg-card p-4 h-full"
+        )}>
+          <div className={cn("sticky top-6 space-y-4", isConnectTab && "top-0")}>
             <Link
               to="/"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-smooth hover:text-foreground"
@@ -213,9 +224,12 @@ function DashboardContent() {
         </aside>
 
         {/* Main content */}
-        <main className="min-w-0 flex-1">
+        <main className={cn(
+          "min-w-0 flex-1",
+          isConnectTab && "h-full flex flex-col"
+        )}>
           {/* Mobile / tablet header */}
-          <div className="lg:hidden">
+          <div className={cn("lg:hidden", isConnectTab && "p-4 border-b border-border bg-card mb-0")}>
             <Link
               to="/"
               className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -262,12 +276,14 @@ function DashboardContent() {
           </div>
 
           {/* Active panel */}
-          <div className="mt-6">
-            <div className="mb-4 hidden items-center justify-between lg:flex">
-              <h1 className="font-display text-2xl font-bold capitalize">
-                {NAV_ITEMS.find((i) => i.key === activeTab)?.label}
-              </h1>
-            </div>
+          <div className={cn("mt-6", isConnectTab && "mt-0 h-full flex-1 overflow-hidden")}>
+            {!isConnectTab && (
+              <div className="mb-4 hidden items-center justify-between lg:flex">
+                <h1 className="font-display text-2xl font-bold capitalize">
+                  {NAV_ITEMS.find((i) => i.key === activeTab)?.label}
+                </h1>
+              </div>
+            )}
             {activeTab === "profile" && <ProfileTab />}
             {activeTab === "connect" && <ConnectTab />}
             {activeTab === "learning" && <LearningTab />}
