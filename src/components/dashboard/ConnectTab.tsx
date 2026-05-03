@@ -15,6 +15,17 @@ import {
   FileText,
   Play,
   Pause,
+  MoreVertical,
+  Trash2,
+  Copy,
+  Reply,
+  Info,
+  Clock,
+  Star,
+  Forward,
+  Image as ImageCardIcon,
+  Phone,
+  VideoIcon,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,8 +60,21 @@ interface Presence {
 const TYPING_CHANNEL = (a: string, b: string) =>
   `typing:${[a, b].sort().join(":")}`;
 
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatDate(iso: string) {
+  const date = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString();
 }
 
 function formatLastSeen(iso?: string) {
@@ -294,6 +318,10 @@ function ChatWindow({
   const [sending, setSending] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [peerTyping, setPeerTyping] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [messageSearch, setMessageSearch] = useState("");
+  const [reactions, setReactions] = useState<Record<string, string[]>>({});
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -398,6 +426,26 @@ function ChatWindow({
     });
   };
 
+  const deleteMessage = async (msgId: string) => {
+    try {
+      await supabase.from("direct_messages").delete().eq("id", msgId);
+      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const addReaction = (messageId: string, emoji: string) => {
+    setReactions((prev) => ({
+      ...prev,
+      [messageId]: [...(prev[messageId] ?? []), emoji],
+    }));
+  };
+
   const sendMessage = async (overrides?: Partial<DM>) => {
     if (!user) return;
     const content = (overrides?.content ?? text).trim();
@@ -450,116 +498,194 @@ function ChatWindow({
     }
   };
 
+  const filteredMessages = useMemo(() => {
+    if (!messageSearch.trim()) return messages;
+    const q = messageSearch.trim().toLowerCase();
+    return messages.filter((m) => m.content?.toLowerCase().includes(q));
+  }, [messages, messageSearch]);
+
+  const mediaMessages = useMemo(() => {
+    return messages.filter((m) => m.attachment_type === "image");
+  }, [messages]);
+
   const initial = (peer.display_name ?? "U").charAt(0).toUpperCase();
   const isOnline = presence?.is_online;
 
   return (
     <>
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border bg-card/60 p-3">
-        <button
-          onClick={onBack}
-          className="rounded-lg p-1.5 hover:bg-secondary md:hidden"
-          aria-label="Back"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <div className="relative">
-          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
-            {peer.avatar_url ? (
-              <img src={peer.avatar_url} alt="" className="h-full w-full object-cover" />
-            ) : (
-              initial
+      <div className="flex items-center justify-between border-b border-border bg-card/60 p-3">
+        <div className="flex items-center gap-3 flex-1">
+          <button
+            onClick={onBack}
+            className="rounded-lg p-1.5 hover:bg-secondary md:hidden"
+            aria-label="Back"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="relative">
+            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+              {peer.avatar_url ? (
+                <img src={peer.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initial
+              )}
+            </div>
+            {isOnline && (
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-green-500" />
             )}
           </div>
-          {isOnline && (
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-green-500" />
-          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{peer.display_name ?? "User"}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {peerTyping
+                ? "typing…"
+                : isOnline
+                  ? "online"
+                  : `last seen ${formatLastSeen(presence?.last_seen_at)}`}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{peer.display_name ?? "User"}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {peerTyping
-              ? "typing…"
-              : isOnline
-                ? "online"
-                : `last seen ${formatLastSeen(presence?.last_seen_at)}`}
-          </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMediaGallery(!showMediaGallery)}
+            className="rounded-lg p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Media"
+          >
+            <ImageCardIcon className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => setShowInfo(!showInfo)}
+            className="rounded-lg p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Info"
+          >
+            <Info className="h-5 w-5" />
+          </button>
         </div>
       </div>
+
+      {/* Info Panel */}
+      {showInfo && (
+        <div className="border-b border-border bg-background/50 p-4 space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-2xl font-bold text-primary-foreground">
+              {peer.avatar_url ? (
+                <img src={peer.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initial
+              )}
+            </div>
+            <div>
+              <h3 className="font-semibold">{peer.display_name ?? "User"}</h3>
+              <p className="text-xs text-muted-foreground">
+                {isOnline ? "Active now" : `Last seen ${formatLastSeen(presence?.last_seen_at)}`}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors">
+              <Phone className="h-4 w-4" />
+              <span className="text-xs font-medium">Voice call</span>
+            </button>
+            <button className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors">
+              <VideoIcon className="h-4 w-4" />
+              <span className="text-xs font-medium">Video call</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Message Search */}
+      <div className="border-b border-border bg-background/50 p-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={messageSearch}
+            onChange={(e) => setMessageSearch(e.target.value)}
+            placeholder="Search in conversation…"
+            className="h-9 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm outline-none focus:border-primary"
+          />
+        </div>
+      </div>
+
+      {/* Media Gallery */}
+      {showMediaGallery && mediaMessages.length > 0 && (
+        <div className="border-b border-border bg-background/50 p-3">
+          <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto">
+            {mediaMessages.map((m) => (
+              <a
+                key={m.id}
+                href={m.attachment_url ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="relative group overflow-hidden rounded-lg aspect-square bg-secondary"
+              >
+                {m.attachment_url && (
+                  <img
+                    src={m.attachment_url}
+                    alt="message"
+                    className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
+                  />
+                )}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div
         ref={scrollRef}
         className="flex-1 space-y-2 overflow-y-auto bg-gradient-to-b from-background/50 to-background/20 p-4"
       >
-        {messages.map((m) => {
-          const mine = m.sender_id === user?.id;
-          return (
-            <div key={m.id} className={cn("flex", mine ? "justify-end" : "justify-start")}>
-              <div
-                className={cn(
-                  "max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm",
-                  mine
-                    ? "rounded-br-sm bg-gradient-primary text-primary-foreground"
-                    : "rounded-bl-sm bg-card text-foreground",
-                )}
-              >
-                {m.attachment_type === "image" && m.attachment_url && (
-                  <a href={m.attachment_url} target="_blank" rel="noreferrer">
-                    <img
-                      src={m.attachment_url}
-                      alt={m.attachment_name ?? "image"}
-                      className="mb-1 max-h-64 rounded-lg object-cover"
-                    />
-                  </a>
-                )}
-                {m.attachment_type === "voice" && m.attachment_url && (
-                  <VoicePlayer url={m.attachment_url} mine={mine} />
-                )}
-                {m.attachment_type === "file" && m.attachment_url && (
-                  <a
-                    href={m.attachment_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={cn(
-                      "mb-1 flex items-center gap-2 rounded-lg p-2 underline-offset-2 hover:underline",
-                      mine ? "bg-white/10" : "bg-secondary",
-                    )}
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="truncate">{m.attachment_name ?? "File"}</span>
-                  </a>
-                )}
-                {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
-                <div
-                  className={cn(
-                    "mt-1 flex items-center justify-end gap-1 text-[10px]",
-                    mine ? "text-primary-foreground/70" : "text-muted-foreground",
+        {filteredMessages.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-sm text-muted-foreground">
+              {messageSearch ? "No messages found" : "Start a conversation"}
+            </p>
+          </div>
+        ) : (
+          <>
+            {filteredMessages.map((m, idx) => {
+              const mine = m.sender_id === user?.id;
+              const showDate =
+                idx === 0 ||
+                formatDate(m.created_at) !== formatDate(filteredMessages[idx - 1]!.created_at);
+
+              return (
+                <div key={m.id}>
+                  {showDate && (
+                    <div className="flex items-center gap-2 my-4">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(m.created_at)}
+                      </span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
                   )}
-                >
-                  <span>{formatTime(m.created_at)}</span>
-                  {mine &&
-                    (m.read_at ? (
-                      <CheckCheck className="h-3 w-3" />
-                    ) : (
-                      <Check className="h-3 w-3" />
-                    ))}
+                  <MessageItem
+                    message={m}
+                    mine={mine}
+                    onDelete={() => deleteMessage(m.id)}
+                    onCopy={() => copyToClipboard(m.content || "")}
+                    onReact={(emoji) => addReaction(m.id, emoji)}
+                    reactions={reactions[m.id] ?? []}
+                  />
+                </div>
+              );
+            })}
+            {peerTyping && (
+              <div className="flex justify-start">
+                <div className="rounded-2xl rounded-bl-sm bg-card px-3 py-2 text-xs text-muted-foreground shadow-sm">
+                  <span className="inline-flex gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
+                  </span>
                 </div>
               </div>
-            </div>
-          );
-        })}
-        {peerTyping && (
-          <div className="flex justify-start">
-            <div className="rounded-2xl rounded-bl-sm bg-card px-3 py-2 text-xs text-muted-foreground shadow-sm">
-              <span className="inline-flex gap-1">
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
-              </span>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
 
@@ -655,6 +781,177 @@ function ChatWindow({
         </div>
       </div>
     </>
+  );
+}
+
+function MessageItem({
+  message,
+  mine,
+  onDelete,
+  onCopy,
+  onReact,
+  reactions,
+}: {
+  message: DM;
+  mine: boolean;
+  onDelete: () => void;
+  onCopy: () => void;
+  onReact: (emoji: string) => void;
+  reactions: string[];
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [showReactions, setShowReactions] = useState(false);
+
+  return (
+    <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
+      <div className="relative group">
+        <div
+          className={cn(
+            "max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm",
+            mine
+              ? "rounded-br-sm bg-gradient-primary text-primary-foreground"
+              : "rounded-bl-sm bg-card text-foreground",
+          )}
+        >
+          {message.attachment_type === "image" && message.attachment_url && (
+            <a href={message.attachment_url} target="_blank" rel="noreferrer">
+              <img
+                src={message.attachment_url}
+                alt={message.attachment_name ?? "image"}
+                className="mb-1 max-h-64 rounded-lg object-cover hover:opacity-90 transition-opacity"
+              />
+            </a>
+          )}
+          {message.attachment_type === "voice" && message.attachment_url && (
+            <VoicePlayer url={message.attachment_url} mine={mine} />
+          )}
+          {message.attachment_type === "file" && message.attachment_url && (
+            <a
+              href={message.attachment_url}
+              target="_blank"
+              rel="noreferrer"
+              className={cn(
+                "mb-1 flex items-center gap-2 rounded-lg p-2 underline-offset-2 hover:underline",
+                mine ? "bg-white/10" : "bg-secondary",
+              )}
+            >
+              <FileText className="h-4 w-4" />
+              <span className="truncate">{message.attachment_name ?? "File"}</span>
+            </a>
+          )}
+          {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+          <div
+            className={cn(
+              "mt-1 flex items-center justify-end gap-1 text-[10px]",
+              mine ? "text-primary-foreground/70" : "text-muted-foreground",
+            )}
+          >
+            <span>{formatTime(message.created_at)}</span>
+            {mine &&
+              (message.read_at ? (
+                <CheckCheck className="h-3 w-3" />
+              ) : (
+                <Check className="h-3 w-3" />
+              ))}
+          </div>
+        </div>
+
+        {/* Message Actions */}
+        <div className="absolute right-0 top-0 -translate-y-full -translate-x-2 opacity-0 group-hover:opacity-100 transition-opacity mb-2 flex items-center gap-1">
+          {QUICK_REACTIONS.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => onReact(emoji)}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border hover:bg-secondary text-sm"
+              title="React"
+            >
+              {emoji}
+            </button>
+          ))}
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border hover:bg-secondary"
+            aria-label="More"
+          >
+            <MoreVertical className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Context Menu */}
+        {showMenu && (
+          <div className="absolute right-0 top-full mt-1 z-20 rounded-lg border border-border bg-card shadow-lg overflow-hidden">
+            {mine && (
+              <button
+                onClick={() => {
+                  onDelete();
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 w-full text-left transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            )}
+            {message.content && (
+              <button
+                onClick={() => {
+                  onCopy();
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary w-full text-left transition-colors"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setShowReactions(!showReactions);
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary w-full text-left transition-colors"
+            >
+              <Smile className="h-3.5 w-3.5" />
+              React
+            </button>
+          </div>
+        )}
+
+        {/* Reaction Picker */}
+        {showReactions && (
+          <div className="absolute right-0 top-full mt-1 z-20 rounded-lg border border-border bg-card shadow-lg p-2 grid grid-cols-6 gap-1">
+            {QUICK_REACTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => {
+                  onReact(emoji);
+                  setShowReactions(false);
+                }}
+                className="text-lg hover:scale-110 transition-transform"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Reactions Display */}
+        {reactions.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {reactions.map((emoji, idx) => (
+              <span
+                key={idx}
+                className={cn(
+                  "inline-flex items-center justify-center h-6 rounded-full text-xs px-1.5",
+                  mine ? "bg-white/20" : "bg-primary/20",
+                )}
+              >
+                {emoji}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
