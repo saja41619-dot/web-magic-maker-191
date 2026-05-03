@@ -43,6 +43,7 @@ export const Route = createFileRoute("/dashboard")({
 
 type TabKey =
   | "profile"
+  | "chat"
   | "learning"
   | "services"
   | "messages"
