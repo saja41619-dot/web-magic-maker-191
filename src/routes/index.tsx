@@ -151,7 +151,7 @@ function HomePage() {
               Got a project in mind?
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
-              Let's chat about what you're building. I reply within 24 hours.
+              Let's connect about what you're building. I reply within 24 hours.
             </p>
             <Link
               to="/contact"
