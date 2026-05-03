@@ -138,8 +138,8 @@ export function ConnectTab() {
         .limit(500),
       supabase
         .from("chat_groups")
-        .select("*, group_members!inner(user_id)")
-        .eq("group_members.user_id", user.id)
+          .select(`*, group_members!inner(*)`)
+          .eq("group_members.user_id", user.id)
     ]);
 
     setUsers(profiles ?? []);

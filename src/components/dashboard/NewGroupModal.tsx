@@ -57,7 +57,7 @@ export function NewGroupModal({ allUsers, onClose, onGroupCreated }: NewGroupMod
       // 1. Create the group
       const { data: group, error: groupError } = await supabase
         .from("chat_groups")
-        .insert({ name: groupName.trim(), created_by: user.id })
+        .insert([{ name: groupName.trim(), created_by: user.id }])
         .select()
         .single();
       
