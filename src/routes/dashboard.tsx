@@ -24,6 +24,7 @@ import { FavoritesTab } from "@/components/dashboard/FavoritesTab";
 import { SettingsTab } from "@/components/dashboard/SettingsTab";
 import { LearningTab } from "@/components/dashboard/LearningTab";
 import { ServicesTab } from "@/components/dashboard/ServicesTab";
+import { ChatTab } from "@/components/dashboard/ChatTab";
 import { NotificationsTab } from "@/components/dashboard/NotificationsTab";
 import { ActivityTab } from "@/components/dashboard/ActivityTab";
 import { SupportTab } from "@/components/dashboard/SupportTab";
