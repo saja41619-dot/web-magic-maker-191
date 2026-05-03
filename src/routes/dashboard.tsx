@@ -265,8 +265,13 @@ function DashboardContent() {
               </h1>
             </div>
             {activeTab === "profile" && <ProfileTab />}
+            {activeTab === "learning" && <LearningTab />}
+            {activeTab === "services" && <ServicesTab />}
             {activeTab === "messages" && <MessagesTab />}
             {activeTab === "favorites" && <FavoritesTab />}
+            {activeTab === "notifications" && <NotificationsTab />}
+            {activeTab === "activity" && <ActivityTab />}
+            {activeTab === "support" && <SupportTab />}
             {activeTab === "settings" && <SettingsTab />}
           </div>
         </main>
