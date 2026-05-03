@@ -146,7 +146,10 @@ export function ConnectTab() {
     const pmap: Record<string, Presence> = {};
     (pres ?? []).forEach((p) => (pmap[p.user_id] = p as Presence));
     setPresence(pmap);
-    setGroups(grps as ChatGroup[] ?? []);
+    
+    if (grps) {
+      setGroups(grps as unknown as ChatGroup[]);
+    }
 
     const last: Record<string, DM> = {};
     const un: Record<string, number> = {};
