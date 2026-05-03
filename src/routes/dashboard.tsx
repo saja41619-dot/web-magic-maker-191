@@ -9,6 +9,11 @@ import {
   Heart,
   Settings as SettingsIcon,
   Shield,
+  BookOpen,
+  Briefcase,
+  Bell,
+  Activity,
+  LifeBuoy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -16,6 +21,11 @@ import { ProfileTab } from "@/components/dashboard/ProfileTab";
 import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { FavoritesTab } from "@/components/dashboard/FavoritesTab";
 import { SettingsTab } from "@/components/dashboard/SettingsTab";
+import { LearningTab } from "@/components/dashboard/LearningTab";
+import { ServicesTab } from "@/components/dashboard/ServicesTab";
+import { NotificationsTab } from "@/components/dashboard/NotificationsTab";
+import { ActivityTab } from "@/components/dashboard/ActivityTab";
+import { SupportTab } from "@/components/dashboard/SupportTab";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -29,12 +39,26 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardRoute,
 });
 
-type TabKey = "profile" | "messages" | "favorites" | "settings";
+type TabKey =
+  | "profile"
+  | "learning"
+  | "services"
+  | "messages"
+  | "favorites"
+  | "notifications"
+  | "activity"
+  | "support"
+  | "settings";
 
 const NAV_ITEMS: { key: TabKey; label: string; icon: typeof UserIcon }[] = [
   { key: "profile", label: "Profile", icon: UserIcon },
+  { key: "learning", label: "Learning", icon: BookOpen },
+  { key: "services", label: "Services", icon: Briefcase },
   { key: "messages", label: "Messages", icon: Mail },
   { key: "favorites", label: "Favorites", icon: Heart },
+  { key: "notifications", label: "Notifications", icon: Bell },
+  { key: "activity", label: "Activity", icon: Activity },
+  { key: "support", label: "Support", icon: LifeBuoy },
   { key: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
