@@ -27,7 +27,6 @@ import {
   Phone,
   VideoIcon,
   Edit,
-  Share,
   Ban,
   Flag,
   Pin,
@@ -37,6 +36,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePresenceHeartbeat } from "@/lib/usePresence";
@@ -277,16 +277,27 @@ export function ConnectTab() {
                         )}
                       </div>
                       <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-xs text-muted-foreground">
-                          {last
-                            ? last.content ??
-                              (last.attachment_type === "image"
-                                ? "📷 Photo"
-                                : last.attachment_type === "voice"
-                                  ? "🎤 Voice message"
-                                  : "📎 File")
-                            : "Say hi 👋"}
-                        </p>
+                        <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                          {last && last.sender_id === user?.id && (
+                            <span>
+                              {last.read_at ? (
+                                <CheckCheck className="h-3 w-3 text-blue-400" />
+                              ) : (
+                                <Check className="h-3 w-3" />
+                              )}
+                            </span>
+                          )}
+                          <span className="truncate">
+                            {last
+                              ? last.content ??
+                                (last.attachment_type === "image"
+                                  ? "Photo"
+                                  : last.attachment_type === "voice"
+                                    ? "Voice message"
+                                    : "File")
+                              : "Say hi 👋"}
+                          </span>
+                        </div>
                         {count > 0 && (
                           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
                             {count}
@@ -309,6 +320,7 @@ export function ConnectTab() {
               peer={activePeer}
               presence={presence[activePeer.id]}
               onBack={() => setActivePeer(null)}
+              allUsers={users}
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-muted/5">
@@ -331,10 +343,12 @@ function ChatWindow({
   peer,
   presence,
   onBack,
+  allUsers,
 }: {
   peer: Profile;
   presence?: Presence;
   onBack: () => void;
+  allUsers: Profile[]; // Added for forwarding
 }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<DM[]>([]);
@@ -354,6 +368,7 @@ function ChatWindow({
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockList, setBlockList] = useState<string[]>([]);
   const [voicePlaybackSpeed, setVoicePlaybackSpeed] = useState(1);
+  const [forwardingMessage, setForwardingMessage] = useState<DM | null>(null);
   const [showDisappearingOptions, setShowDisappearingOptions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -616,11 +631,32 @@ function ChatWindow({
     }));
   };
 
-  const forwardMessage = async (msgId: string) => {
+  // This function is now responsible for initiating the forward flow
+  const initiateForward = (msgId: string) => {
     const message = messages.find((m) => m.id === msgId);
     if (!message) return;
-    const forwardText = `[Forwarded]\n${message.content || "(Attachment)"}`;
-    await sendMessage({ content: forwardText });
+    setForwardingMessage(message);
+  };
+
+  // This function sends the actual forwarded message to a selected recipient
+  const sendForwardedMessage = async (targetRecipient: Profile) => {
+    if (!user || !forwardingMessage) return;
+    setSending(true);
+    try {
+      const forwardContent = `[Forwarded]\n${forwardingMessage.content || "(Attachment)"}`;
+      await supabase.from("direct_messages").insert({
+        sender_id: user.id,
+        recipient_id: targetRecipient.id,
+        content: forwardContent,
+        attachment_url: forwardingMessage.attachment_url,
+        attachment_type: forwardingMessage.attachment_type,
+        attachment_name: forwardingMessage.attachment_name,
+      });
+      toast.success(`Message forwarded to ${targetRecipient.display_name || "User"}`);
+    } finally {
+      setSending(false);
+      setForwardingMessage(null); // Close modal after sending
+    }
   };
 
   const startCall = async (type: "voice" | "video") => {
@@ -953,7 +989,7 @@ function ChatWindow({
                     reactions={reactions[m.id] ?? []}
                     onPin={() => togglePin(m.id)}
                     onStar={() => toggleStar(m.id)}
-                    onForward={() => forwardMessage(m.id)}
+                    onForward={() => initiateForward(m.id)} // Changed to initiateForward
                     onReply={() => setReplyingTo(m)}
                     onEdit={() => {
                       setEditingId(m.id);
@@ -1174,6 +1210,48 @@ function ChatWindow({
           onToggleVideo={(enabled) => callManagerRef.current!.toggleVideo(enabled)}
           peerName={peer.display_name ?? "User"}
         />
+      )}
+
+      {/* Forward Message Modal */}
+      {forwardingMessage && (
+        <div className="fixed inset-0 z-[101] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-elegant p-6">
+            <h3 className="font-display text-lg font-bold mb-4">Forward message to...</h3>
+            <div className="max-h-64 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-border">
+              {allUsers.filter(u => u.id !== user?.id && u.id !== peer.id).length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-4">No other users to forward to.</p>
+              ) : (
+                allUsers.filter(u => u.id !== user?.id && u.id !== peer.id).map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => sendForwardedMessage(u)}
+                    className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-secondary/50 transition-colors text-left"
+                  >
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+                      {u.avatar_url ? (
+                        <img src={u.avatar_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        u.display_name?.charAt(0).toUpperCase() || "U"
+                      )}
+                    </div>
+                    <p className="font-medium text-sm truncate">{u.display_name || "User"}</p>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setForwardingMessage(null)}
+                className="rounded-xl border border-border px-4 py-2 text-sm font-medium hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              {sending && (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground self-center" />
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
