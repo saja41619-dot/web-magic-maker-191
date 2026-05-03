@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { siteSettingsQuery } from "@/lib/queries";
+import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -33,6 +34,7 @@ const contactSchema = z.object({
 });
 
 function ContactPage() {
+  const { user } = useAuth();
   const { data: settings } = useQuery(siteSettingsQuery());
   const email = settings?.email ?? "mihraj@gmail.com";
   const whatsappRaw = settings?.whatsapp ?? "919792313786";
@@ -80,7 +82,8 @@ function ContactPage() {
       return;
     }
     setSubmitting(true);
-    const { error } = await supabase.from("contact_messages").insert(parsed.data);
+    const payload = user ? { ...parsed.data, user_id: user.id } : parsed.data;
+    const { error } = await supabase.from("contact_messages").insert(payload);
     setSubmitting(false);
     if (error) {
       toast.error("Could not send message. Please try again.");

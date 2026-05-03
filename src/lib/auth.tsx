@@ -39,11 +39,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const SESSION_KEY = "auth_signin_at";
+    const MAX_AGE_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+    const isExpired = () => {
+      if (typeof window === "undefined") return false;
+      const ts = window.localStorage.getItem(SESSION_KEY);
+      if (!ts) return true;
+      return Date.now() - Number(ts) > MAX_AGE_MS;
+    };
+
+    let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleExpiry = () => {
+      if (expiryTimer) clearTimeout(expiryTimer);
+      if (typeof window === "undefined") return;
+      const ts = Number(window.localStorage.getItem(SESSION_KEY) ?? 0);
+      if (!ts) return;
+      const remaining = ts + MAX_AGE_MS - Date.now();
+      if (remaining <= 0) {
+        void supabase.auth.signOut();
+        return;
+      }
+      expiryTimer = setTimeout(() => {
+        void supabase.auth.signOut();
+      }, remaining);
+    };
+
     // Set up listener BEFORE checking session
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, sess) => {
+      if (event === "SIGNED_IN" && sess && typeof window !== "undefined") {
+        window.localStorage.setItem(SESSION_KEY, String(Date.now()));
+        scheduleExpiry();
+      }
+      if (event === "SIGNED_OUT" && typeof window !== "undefined") {
+        window.localStorage.removeItem(SESSION_KEY);
+        if (expiryTimer) clearTimeout(expiryTimer);
+      }
       setSession(sess);
       if (sess?.user) {
-        // Defer role lookup to avoid deadlock
         setTimeout(() => {
           void checkAdmin(sess.user.id).then(setIsAdmin);
         }, 0);
@@ -52,16 +85,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    void supabase.auth.getSession().then(async ({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) {
-        setIsAdmin(await checkAdmin(data.session.user.id));
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session && isExpired()) {
+        void supabase.auth.signOut();
+        setSession(null);
+        setLoading(false);
+        return;
       }
+      setSession(data.session);
       setLoading(false);
+      if (data.session?.user) {
+        scheduleExpiry();
+        // Defer admin check — don't block initial render on it.
+        setTimeout(() => {
+          void checkAdmin(data.session!.user.id).then(setIsAdmin);
+        }, 0);
+      }
     });
 
     return () => {
       sub.subscription.unsubscribe();
+      if (expiryTimer) clearTimeout(expiryTimer);
     };
   }, []);
 
