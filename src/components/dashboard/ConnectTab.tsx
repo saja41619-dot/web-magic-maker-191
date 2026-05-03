@@ -125,43 +125,45 @@ export function ConnectTab() {
   const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
   const [loading, setLoading] = useState(true);
 
+  const loadData = async () => {
+    if (!user) return;
+    const [{ data: profiles }, { data: pres }, { data: msgs }, { data: grps }] = await Promise.all([
+      supabase.from("profiles").select("id, display_name, avatar_url").neq("id", user.id),
+      supabase.from("user_presence").select("user_id, is_online, last_seen_at"),
+      supabase
+        .from("direct_messages")
+        .select("*")
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("chat_groups")
+        .select("*, group_members!inner(user_id)")
+        .eq("group_members.user_id", user.id)
+    ]);
+
+    setUsers(profiles ?? []);
+    const pmap: Record<string, Presence> = {};
+    (pres ?? []).forEach((p) => (pmap[p.user_id] = p as Presence));
+    setPresence(pmap);
+    setGroups(grps as ChatGroup[] ?? []);
+
+    const last: Record<string, DM> = {};
+    const un: Record<string, number> = {};
+    (msgs ?? []).forEach((m) => {
+      const peer = m.sender_id === user.id ? m.recipient_id : m.sender_id;
+      if (!last[peer]) last[peer] = m as DM;
+      if (m.recipient_id === user.id && !m.read_at) un[peer] = (un[peer] ?? 0) + 1;
+    });
+    setLastMessages(last);
+    setUnread(un);
+    setLoading(false);
+  };
+
   // Load users + presence + summaries
   useEffect(() => {
-    if (!user) return;
     let cancelled = false;
-    void (async () => {
-      const [{ data: profiles }, { data: pres }, { data: msgs }, { data: grps }] = await Promise.all([
-        supabase.from("profiles").select("id, display_name, avatar_url").neq("id", user.id),
-        supabase.from("user_presence").select("user_id, is_online, last_seen_at"),
-        supabase
-          .from("direct_messages")
-          .select("*")
-          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("chat_groups")
-          .select("*, group_members!inner(user_id)")
-          .eq("group_members.user_id", user.id)
-      ]);
-      if (cancelled) return;
-      setUsers(profiles ?? []);
-      const pmap: Record<string, Presence> = {};
-      (pres ?? []).forEach((p) => (pmap[p.user_id] = p as Presence));
-      setPresence(pmap);
-      setGroups(grps as ChatGroup[] ?? []);
-
-      const last: Record<string, DM> = {};
-      const un: Record<string, number> = {};
-      (msgs ?? []).forEach((m) => {
-        const peer = m.sender_id === user.id ? m.recipient_id : m.sender_id;
-        if (!last[peer]) last[peer] = m as DM;
-        if (m.recipient_id === user.id && !m.read_at) un[peer] = (un[peer] ?? 0) + 1;
-      });
-      setLastMessages(last);
-      setUnread(un);
-      setLoading(false);
-    })();
+    void loadData();
     return () => {
       cancelled = true;
     };
@@ -354,7 +356,7 @@ export function ConnectTab() {
                <Users className="h-10 w-10 text-primary mb-4 opacity-50" />
                <h3 className="text-xl font-bold">{activeGroup.name}</h3>
                <p className="text-sm text-muted-foreground mt-2">Group Chat UI Coming Soon...</p>
-            />
+            </div>
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-muted/5">
               <div className="mb-4 rounded-3xl bg-gradient-primary p-6 text-primary-foreground shadow-glow opacity-20">
@@ -370,7 +372,11 @@ export function ConnectTab() {
 
         {/* New Group Modal */}
         {showNewGroupModal && (
-          <NewGroupModal allUsers={users} onClose={() => setShowNewGroupModal(false)} />
+          <NewGroupModal 
+            allUsers={users} 
+            onClose={() => setShowNewGroupModal(false)} 
+            onGroupCreated={() => void loadData()}
+          />
         )}
 
       </div>

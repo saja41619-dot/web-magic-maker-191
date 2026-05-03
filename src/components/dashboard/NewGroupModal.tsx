@@ -17,7 +17,7 @@ interface NewGroupModalProps {
   onGroupCreated?: () => void;
 }
 
-export function NewGroupModal({ allUsers, onClose }: NewGroupModalProps) {
+export function NewGroupModal({ allUsers, onClose, onGroupCreated }: NewGroupModalProps) {
   const { user } = useAuth();
   const [groupName, setGroupName] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<Profile[]>([]);
@@ -73,6 +73,7 @@ export function NewGroupModal({ allUsers, onClose }: NewGroupModalProps) {
       if (membersError) throw membersError;
 
       toast.success(`Group "${groupName}" created successfully!`);
+      onGroupCreated?.();
       onClose();
     } catch (err: any) {
       toast.error(err.message || "Failed to create group");
