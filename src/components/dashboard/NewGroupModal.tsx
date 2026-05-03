@@ -57,11 +57,16 @@ export function NewGroupModal({ allUsers, onClose, onGroupCreated }: NewGroupMod
       // 1. Create the group
       const { data: group, error: groupError } = await supabase
         .from("chat_groups")
-        .insert([{ name: groupName.trim(), created_by: user.id }])
+        .insert({ name: groupName.trim(), created_by: user.id })
         .select()
         .single();
       
-      if (groupError) throw groupError;
+      if (groupError) {
+        console.error("Group creation error:", groupError);
+        throw groupError;
+      }
+
+      if (!group) throw new Error("Group was not returned after creation");
 
       // 2. Add members (including creator)
       const members = [
@@ -70,12 +75,16 @@ export function NewGroupModal({ allUsers, onClose, onGroupCreated }: NewGroupMod
       ];
 
       const { error: membersError } = await supabase.from("group_members").insert(members);
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error("Members insertion error:", membersError);
+        throw membersError;
+      }
 
       toast.success(`Group "${groupName}" created successfully!`);
       onGroupCreated?.();
       onClose();
     } catch (err: any) {
+      console.error("Detailed error:", err);
       toast.error(err.message || "Failed to create group");
     } finally {
       setCreating(false);
