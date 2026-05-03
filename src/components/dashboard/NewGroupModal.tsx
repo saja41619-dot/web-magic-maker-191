@@ -17,7 +17,7 @@ interface NewGroupModalProps {
   onGroupCreated?: () => void;
 }
 
-export function NewGroupModal({ allUsers, onClose, onGroupCreated }: NewGroupModalProps) {
+export function NewGroupModal({ allUsers, onClose, onGroupCreated }: NewGroupModalProps & { onGroupCreated?: () => void }) {
   const { user } = useAuth();
   const [groupName, setGroupName] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<Profile[]>([]);
