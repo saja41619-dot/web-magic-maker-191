@@ -62,7 +62,7 @@ function formatLastSeen(iso?: string) {
   return new Date(iso).toLocaleDateString();
 }
 
-export function ChatTab() {
+export function ConnectTab() {
   usePresenceHeartbeat();
   const { user } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
