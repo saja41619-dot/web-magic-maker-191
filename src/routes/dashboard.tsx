@@ -9,6 +9,11 @@ import {
   Heart,
   Settings as SettingsIcon,
   Shield,
+  BookOpen,
+  Briefcase,
+  Bell,
+  Activity,
+  LifeBuoy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -16,6 +21,11 @@ import { ProfileTab } from "@/components/dashboard/ProfileTab";
 import { MessagesTab } from "@/components/dashboard/MessagesTab";
 import { FavoritesTab } from "@/components/dashboard/FavoritesTab";
 import { SettingsTab } from "@/components/dashboard/SettingsTab";
+import { LearningTab } from "@/components/dashboard/LearningTab";
+import { ServicesTab } from "@/components/dashboard/ServicesTab";
+import { NotificationsTab } from "@/components/dashboard/NotificationsTab";
+import { ActivityTab } from "@/components/dashboard/ActivityTab";
+import { SupportTab } from "@/components/dashboard/SupportTab";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -29,12 +39,26 @@ export const Route = createFileRoute("/dashboard")({
   component: DashboardRoute,
 });
 
-type TabKey = "profile" | "messages" | "favorites" | "settings";
+type TabKey =
+  | "profile"
+  | "learning"
+  | "services"
+  | "messages"
+  | "favorites"
+  | "notifications"
+  | "activity"
+  | "support"
+  | "settings";
 
 const NAV_ITEMS: { key: TabKey; label: string; icon: typeof UserIcon }[] = [
   { key: "profile", label: "Profile", icon: UserIcon },
+  { key: "learning", label: "Learning", icon: BookOpen },
+  { key: "services", label: "Services", icon: Briefcase },
   { key: "messages", label: "Messages", icon: Mail },
   { key: "favorites", label: "Favorites", icon: Heart },
+  { key: "notifications", label: "Notifications", icon: Bell },
+  { key: "activity", label: "Activity", icon: Activity },
+  { key: "support", label: "Support", icon: LifeBuoy },
   { key: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -241,8 +265,13 @@ function DashboardContent() {
               </h1>
             </div>
             {activeTab === "profile" && <ProfileTab />}
+            {activeTab === "learning" && <LearningTab />}
+            {activeTab === "services" && <ServicesTab />}
             {activeTab === "messages" && <MessagesTab />}
             {activeTab === "favorites" && <FavoritesTab />}
+            {activeTab === "notifications" && <NotificationsTab />}
+            {activeTab === "activity" && <ActivityTab />}
+            {activeTab === "support" && <SupportTab />}
             {activeTab === "settings" && <SettingsTab />}
           </div>
         </main>
@@ -253,7 +282,7 @@ function DashboardContent() {
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-lg lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto grid max-w-md grid-cols-4">
+        <div className="flex gap-1 overflow-x-auto px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = activeTab === item.key;
@@ -262,13 +291,13 @@ function DashboardContent() {
                 key={item.key}
                 onClick={() => setActiveTab(item.key)}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium transition-smooth",
+                  "flex min-w-[68px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-smooth",
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 <span
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl transition-smooth",
+                    "flex h-8 w-8 items-center justify-center rounded-lg transition-smooth",
                     active && "bg-gradient-primary text-primary-foreground shadow-glow",
                   )}
                 >
