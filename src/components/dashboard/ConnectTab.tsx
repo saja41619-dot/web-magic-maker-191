@@ -26,6 +26,14 @@ import {
   Image as ImageCardIcon,
   Phone,
   VideoIcon,
+  Edit,
+  Share,
+  Ban,
+  Flag,
+  Pin,
+  Timer,
+  Volume2,
+  ChevronDown,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +57,11 @@ interface DM {
   attachment_name: string | null;
   created_at: string;
   read_at: string | null;
+  reply_to_id?: string | null;
+  is_pinned?: boolean;
+  is_starred?: boolean;
+  edited_at?: string | null;
+  disappear_at?: string | null;
 }
 
 interface Presence {
@@ -322,6 +335,15 @@ function ChatWindow({
   const [messageSearch, setMessageSearch] = useState("");
   const [reactions, setReactions] = useState<Record<string, string[]>>({});
   const [showMediaGallery, setShowMediaGallery] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState<Record<string, boolean>>({});
+  const [starredMessages, setStarredMessages] = useState<Record<string, boolean>>({});
+  const [replyingTo, setReplyingTo] = useState<DM | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockList, setBlockList] = useState<string[]>([]);
+  const [voicePlaybackSpeed, setVoicePlaybackSpeed] = useState(1);
+  const [showDisappearingOptions, setShowDisappearingOptions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -446,6 +468,63 @@ function ChatWindow({
     }));
   };
 
+  const editMessage = async (msgId: string) => {
+    if (!editingText.trim()) return;
+    try {
+      await supabase
+        .from("direct_messages")
+        .update({ content: editingText, edited_at: new Date().toISOString() })
+        .eq("id", msgId);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === msgId
+            ? { ...m, content: editingText, edited_at: new Date().toISOString() }
+            : m
+        )
+      );
+      setEditingId(null);
+      setEditingText("");
+    } catch (err) {
+      console.error("Edit error:", err);
+    }
+  };
+
+  const togglePin = (msgId: string) => {
+    setPinnedMessages((prev) => ({
+      ...prev,
+      [msgId]: !prev[msgId],
+    }));
+  };
+
+  const toggleStar = (msgId: string) => {
+    setStarredMessages((prev) => ({
+      ...prev,
+      [msgId]: !prev[msgId],
+    }));
+  };
+
+  const forwardMessage = async (msgId: string) => {
+    const message = messages.find((m) => m.id === msgId);
+    if (!message) return;
+    const forwardText = `[Forwarded]\n${message.content || "(Attachment)"}`;
+    await sendMessage({ content: forwardText });
+  };
+
+  const blockUser = async () => {
+    setIsBlocked(true);
+    setBlockList((prev) => [...prev, peer.id]);
+  };
+
+  const unblockUser = async () => {
+    setIsBlocked(false);
+    setBlockList((prev) => prev.filter((id) => id !== peer.id));
+  };
+
+  const reportMessage = async (msgId: string) => {
+    console.log("Message reported:", msgId);
+    alert("Message reported. Our team will review it.");
+  };
+
   const sendMessage = async (overrides?: Partial<DM>) => {
     if (!user) return;
     const content = (overrides?.content ?? text).trim();
@@ -538,15 +617,28 @@ function ChatWindow({
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{peer.display_name ?? "User"}</p>
             <p className="truncate text-xs text-muted-foreground">
-              {peerTyping
-                ? "typing…"
-                : isOnline
-                  ? "online"
-                  : `last seen ${formatLastSeen(presence?.last_seen_at)}`}
+              {isBlocked ? (
+                <span className="text-destructive">Blocked</span>
+              ) : peerTyping ? (
+                "typing…"
+              ) : isOnline ? (
+                "online"
+              ) : (
+                `last seen ${formatLastSeen(presence?.last_seen_at)}`
+              )}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {isBlocked && (
+            <button
+              onClick={unblockUser}
+              className="rounded-lg p-2 hover:bg-secondary text-destructive hover:text-destructive/80 transition-colors"
+              aria-label="Unblock"
+            >
+              <Ban className="h-5 w-5" />
+            </button>
+          )}
           <button
             onClick={() => setShowMediaGallery(!showMediaGallery)}
             className="rounded-lg p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
@@ -566,7 +658,7 @@ function ChatWindow({
 
       {/* Info Panel */}
       {showInfo && (
-        <div className="border-b border-border bg-background/50 p-4 space-y-4">
+        <div className="border-b border-border bg-background/50 p-4 space-y-4 max-h-96 overflow-y-auto">
           <div className="flex items-center gap-4">
             <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-2xl font-bold text-primary-foreground">
               {peer.avatar_url ? (
@@ -590,6 +682,40 @@ function ChatWindow({
             <button className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors">
               <VideoIcon className="h-4 w-4" />
               <span className="text-xs font-medium">Video call</span>
+            </button>
+          </div>
+
+          {/* Pinned Messages */}
+          {Object.entries(pinnedMessages).some(([_, pinned]) => pinned) && (
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-muted-foreground">PINNED MESSAGES</h4>
+              {messages
+                .filter((m) => pinnedMessages[m.id])
+                .map((m) => (
+                  <div key={m.id} className="bg-secondary/50 rounded-lg p-2 text-xs line-clamp-2 cursor-pointer hover:bg-secondary transition-colors">
+                    {m.content || "(Attachment)"}
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="space-y-2 pt-2 border-t border-border">
+            <button
+              onClick={isBlocked ? unblockUser : blockUser}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-lg p-2 text-xs font-medium transition-colors",
+                isBlocked
+                  ? "bg-primary/10 text-primary hover:bg-primary/20"
+                  : "bg-destructive/10 text-destructive hover:bg-destructive/20"
+              )}
+            >
+              <Ban className="h-4 w-4" />
+              {isBlocked ? "Unblock User" : "Block User"}
+            </button>
+            <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-destructive/10 p-2 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors">
+              <Flag className="h-4 w-4" />
+              Report User
             </button>
           </div>
         </div>
@@ -670,6 +796,17 @@ function ChatWindow({
                     onCopy={() => copyToClipboard(m.content || "")}
                     onReact={(emoji) => addReaction(m.id, emoji)}
                     reactions={reactions[m.id] ?? []}
+                    onPin={() => togglePin(m.id)}
+                    onStar={() => toggleStar(m.id)}
+                    onForward={() => forwardMessage(m.id)}
+                    onReply={() => setReplyingTo(m)}
+                    onEdit={() => {
+                      setEditingId(m.id);
+                      setEditingText(m.content || "");
+                    }}
+                    onReport={() => reportMessage(m.id)}
+                    isPinned={pinnedMessages[m.id] ?? false}
+                    isStarred={starredMessages[m.id] ?? false}
                   />
                 </div>
               );
@@ -690,12 +827,74 @@ function ChatWindow({
       </div>
 
       {/* Composer */}
-      <div className="relative border-t border-border bg-card p-3">
+      <div className="relative border-t border-border bg-card p-3 space-y-2">
+        {/* Reply Preview */}
+        {replyingTo && (
+          <div className="flex items-center gap-2 bg-primary/10 p-2 rounded-lg">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-primary font-medium">Replying to {peer.display_name}</p>
+              <p className="text-xs text-muted-foreground line-clamp-1">
+                {replyingTo.content || "(Attachment)"}
+              </p>
+            </div>
+            <button
+              onClick={() => setReplyingTo(null)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Edit Preview */}
+        {editingId && (
+          <div className="flex items-center gap-2 bg-yellow-500/10 p-2 rounded-lg">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-yellow-600 font-medium">Editing message</p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingId(null);
+                setEditingText("");
+              }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Disappearing Message Timer */}
+        {showDisappearingOptions && (
+          <div className="flex items-center gap-2 bg-background border border-border p-2 rounded-lg">
+            <Timer className="h-4 w-4 text-muted-foreground" />
+            <select className="text-xs bg-transparent border-0 outline-none">
+              <option value="">Disappearing messages</option>
+              <option value="60">1 minute</option>
+              <option value="3600">1 hour</option>
+              <option value="86400">1 day</option>
+              <option value="604800">1 week</option>
+            </select>
+            <button
+              onClick={() => setShowDisappearingOptions(false)}
+              className="ml-auto text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         {showEmoji && (
           <div className="absolute bottom-full left-2 z-10 mb-2">
             <EmojiPicker
               theme={Theme.AUTO}
-              onEmojiClick={(e) => setText((t) => t + e.emoji)}
+              onEmojiClick={(e) => {
+                if (editingId) {
+                  setEditingText((t) => t + e.emoji);
+                } else {
+                  setText((t) => t + e.emoji);
+                }
+              }}
               width={320}
               height={380}
             />
@@ -727,6 +926,14 @@ function ChatWindow({
           >
             <Paperclip className="h-5 w-5" />
           </button>
+          <button
+            type="button"
+            onClick={() => setShowDisappearingOptions(!showDisappearingOptions)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Disappearing"
+          >
+            <Timer className="h-5 w-5" />
+          </button>
           <input
             ref={imageInputRef}
             type="file"
@@ -750,30 +957,50 @@ function ChatWindow({
           />
 
           <textarea
-            value={text}
+            value={editingId ? editingText : text}
             onChange={(e) => {
-              setText(e.target.value);
+              if (editingId) {
+                setEditingText(e.target.value);
+              } else {
+                setText(e.target.value);
+              }
               sendTyping();
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                void sendMessage();
+                if (editingId) {
+                  void editMessage(editingId);
+                } else {
+                  void sendMessage();
+                }
               }
             }}
-            placeholder="Type a message…"
+            placeholder={editingId ? "Edit message…" : "Type a message…"}
             rows={1}
             className="max-h-32 min-h-10 flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
           />
 
-          {text.trim() ? (
+          {(text.trim() || editingId) ? (
             <button
-              onClick={() => sendMessage()}
+              onClick={() => {
+                if (editingId) {
+                  void editMessage(editingId);
+                } else {
+                  void sendMessage();
+                }
+              }}
               disabled={sending}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow transition-smooth hover:opacity-90 disabled:opacity-60"
-              aria-label="Send"
+              aria-label={editingId ? "Save" : "Send"}
             >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {sending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : editingId ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
             </button>
           ) : (
             <VoiceRecorder onRecorded={(f) => uploadAndSend(f, "voice")} />
@@ -791,6 +1018,14 @@ function MessageItem({
   onCopy,
   onReact,
   reactions,
+  onPin,
+  onStar,
+  onForward,
+  onReply,
+  onEdit,
+  onReport,
+  isPinned,
+  isStarred,
 }: {
   message: DM;
   mine: boolean;
@@ -798,9 +1033,18 @@ function MessageItem({
   onCopy: () => void;
   onReact: (emoji: string) => void;
   reactions: string[];
+  onPin: () => void;
+  onStar: () => void;
+  onForward: () => void;
+  onReply: () => void;
+  onEdit: () => void;
+  onReport: () => void;
+  isPinned: boolean;
+  isStarred: boolean;
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
+  const [voiceSpeed, setVoiceSpeed] = useState(1);
 
   return (
     <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
@@ -813,6 +1057,11 @@ function MessageItem({
               : "rounded-bl-sm bg-card text-foreground",
           )}
         >
+          {isPinned && (
+            <div className="flex items-center gap-1 mb-1 text-[10px] opacity-75">
+              <Pin className="h-3 w-3" /> Pinned
+            </div>
+          )}
           {message.attachment_type === "image" && message.attachment_url && (
             <a href={message.attachment_url} target="_blank" rel="noreferrer">
               <img
@@ -823,7 +1072,7 @@ function MessageItem({
             </a>
           )}
           {message.attachment_type === "voice" && message.attachment_url && (
-            <VoicePlayer url={message.attachment_url} mine={mine} />
+            <VoicePlayer url={message.attachment_url} mine={mine} speed={voiceSpeed} />
           )}
           {message.attachment_type === "file" && message.attachment_url && (
             <a
@@ -847,6 +1096,7 @@ function MessageItem({
             )}
           >
             <span>{formatTime(message.created_at)}</span>
+            {message.edited_at && <span className="text-[8px]">(edited)</span>}
             {mine &&
               (message.read_at ? (
                 <CheckCheck className="h-3 w-3" />
@@ -857,7 +1107,7 @@ function MessageItem({
         </div>
 
         {/* Message Actions */}
-        <div className="absolute right-0 top-0 -translate-y-full -translate-x-2 opacity-0 group-hover:opacity-100 transition-opacity mb-2 flex items-center gap-1">
+        <div className="absolute right-0 top-0 -translate-y-full -translate-x-2 opacity-0 group-hover:opacity-100 transition-opacity mb-2 flex items-center gap-1 flex-wrap justify-end">
           {QUICK_REACTIONS.map((emoji) => (
             <button
               key={emoji}
@@ -868,6 +1118,26 @@ function MessageItem({
               {emoji}
             </button>
           ))}
+          <button
+            onClick={onPin}
+            className={cn(
+              "flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border hover:bg-secondary",
+              isPinned && "bg-primary text-primary-foreground"
+            )}
+            title="Pin"
+          >
+            <Pin className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={onStar}
+            className={cn(
+              "flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border hover:bg-secondary",
+              isStarred && "bg-yellow-500 text-white"
+            )}
+            title="Star"
+          >
+            <Star className="h-3.5 w-3.5" />
+          </button>
           <button
             onClick={() => setShowMenu(!showMenu)}
             className="flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border hover:bg-secondary"
@@ -880,18 +1150,26 @@ function MessageItem({
         {/* Context Menu */}
         {showMenu && (
           <div className="absolute right-0 top-full mt-1 z-20 rounded-lg border border-border bg-card shadow-lg overflow-hidden">
-            {mine && (
-              <button
-                onClick={() => {
-                  onDelete();
-                  setShowMenu(false);
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 w-full text-left transition-colors"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Delete
-              </button>
-            )}
+            <button
+              onClick={() => {
+                onReply();
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary w-full text-left transition-colors"
+            >
+              <Reply className="h-3.5 w-3.5" />
+              Reply
+            </button>
+            <button
+              onClick={() => {
+                onForward();
+                setShowMenu(false);
+              }}
+              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary w-full text-left transition-colors"
+            >
+              <Forward className="h-3.5 w-3.5" />
+              Forward
+            </button>
             {message.content && (
               <button
                 onClick={() => {
@@ -904,33 +1182,42 @@ function MessageItem({
                 Copy
               </button>
             )}
-            <button
-              onClick={() => {
-                setShowReactions(!showReactions);
-              }}
-              className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary w-full text-left transition-colors"
-            >
-              <Smile className="h-3.5 w-3.5" />
-              React
-            </button>
-          </div>
-        )}
-
-        {/* Reaction Picker */}
-        {showReactions && (
-          <div className="absolute right-0 top-full mt-1 z-20 rounded-lg border border-border bg-card shadow-lg p-2 grid grid-cols-6 gap-1">
-            {QUICK_REACTIONS.map((emoji) => (
+            {mine && (
               <button
-                key={emoji}
                 onClick={() => {
-                  onReact(emoji);
-                  setShowReactions(false);
+                  onEdit();
+                  setShowMenu(false);
                 }}
-                className="text-lg hover:scale-110 transition-transform"
+                className="flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary w-full text-left transition-colors"
               >
-                {emoji}
+                <Edit className="h-3.5 w-3.5" />
+                Edit
               </button>
-            ))}
+            )}
+            {mine && (
+              <button
+                onClick={() => {
+                  onDelete();
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 w-full text-left transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            )}
+            {!mine && (
+              <button
+                onClick={() => {
+                  onReport();
+                  setShowMenu(false);
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-xs text-destructive hover:bg-destructive/10 w-full text-left transition-colors"
+              >
+                <Flag className="h-3.5 w-3.5" />
+                Report
+              </button>
+            )}
           </div>
         )}
 
@@ -1034,9 +1321,11 @@ function VoiceRecorder({ onRecorded }: { onRecorded: (file: File) => void }) {
   );
 }
 
-function VoicePlayer({ url, mine }: { url: string; mine: boolean }) {
+function VoicePlayer({ url, mine, speed = 1 }: { url: string; mine: boolean; speed?: number }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+
   const toggle = () => {
     const a = audioRef.current;
     if (!a) return;
@@ -1048,6 +1337,14 @@ function VoicePlayer({ url, mine }: { url: string; mine: boolean }) {
       setPlaying(false);
     }
   };
+
+  const handleSpeedChange = (newSpeed: number) => {
+    setPlaybackSpeed(newSpeed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = newSpeed;
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -1058,14 +1355,33 @@ function VoicePlayer({ url, mine }: { url: string; mine: boolean }) {
       <button
         onClick={toggle}
         className={cn(
-          "flex h-8 w-8 items-center justify-center rounded-full",
+          "flex h-8 w-8 items-center justify-center rounded-full shrink-0",
           mine ? "bg-white/20" : "bg-primary text-primary-foreground",
         )}
         aria-label={playing ? "Pause" : "Play"}
       >
         {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
       </button>
-      <span className="text-xs">Voice message</span>
+      <span className="text-xs min-w-fit">Voice message</span>
+      <div className="relative group">
+        <button className="text-xs px-1 opacity-70 hover:opacity-100 flex items-center gap-1">
+          {playbackSpeed}x <ChevronDown className="h-3 w-3" />
+        </button>
+        <div className="absolute right-0 top-full hidden group-hover:block z-10 bg-card border border-border rounded-lg shadow-lg mt-1">
+          {[0.5, 0.75, 1, 1.25, 1.5, 2].map((s) => (
+            <button
+              key={s}
+              onClick={() => handleSpeedChange(s)}
+              className={cn(
+                "block w-full text-left px-3 py-1.5 text-xs hover:bg-secondary",
+                playbackSpeed === s && "bg-primary text-primary-foreground"
+              )}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+      </div>
       <audio
         ref={audioRef}
         src={url}
