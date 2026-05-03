@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
-import { X, Search, Users, Check } from "lucide-react";
+import { X, Search, Users, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 
 interface Profile {
   id: string;
@@ -12,12 +14,15 @@ interface Profile {
 interface NewGroupModalProps {
   allUsers: Profile[];
   onClose: () => void;
+  onGroupCreated?: () => void;
 }
 
 export function NewGroupModal({ allUsers, onClose }: NewGroupModalProps) {
+  const { user } = useAuth();
   const [groupName, setGroupName] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const filteredUsers = useMemo(() => {
     const q = searchTerm.trim().toLowerCase();
@@ -36,7 +41,7 @@ export function NewGroupModal({ allUsers, onClose }: NewGroupModalProps) {
     );
   };
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (!groupName.trim()) {
       toast.error("Group name cannot be empty.");
       return;
@@ -45,19 +50,35 @@ export function NewGroupModal({ allUsers, onClose }: NewGroupModalProps) {
       toast.error("Please select at least one member for the group.");
       return;
     }
+    if (!user) return;
 
-    // TODO: Implement actual group creation logic here
-    // This would involve:
-    // 1. Creating a new entry in a 'chat_groups' table.
-    // 2. Adding entries to a 'group_members' table for selectedUsers and the current user.
-    // 3. Notifying the ConnectTab to refresh its chat list to include the new group.
+    setCreating(true);
+    try {
+      // 1. Create the group
+      const { data: group, error: groupError } = await supabase
+        .from("chat_groups")
+        .insert({ name: groupName.trim(), created_by: user.id })
+        .select()
+        .single();
+      
+      if (groupError) throw groupError;
 
-    console.log("Creating group:", {
-      groupName,
-      members: selectedUsers.map((u) => u.id),
-    });
-    toast.success(`Group "${groupName}" created successfully! (Placeholder)`);
-    onClose();
+      // 2. Add members (including creator)
+      const members = [
+        { group_id: group.id, user_id: user.id, role: 'admin' },
+        ...selectedUsers.map(u => ({ group_id: group.id, user_id: u.id, role: 'member' }))
+      ];
+
+      const { error: membersError } = await supabase.from("group_members").insert(members);
+      if (membersError) throw membersError;
+
+      toast.success(`Group "${groupName}" created successfully!`);
+      onClose();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to create group");
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -139,10 +160,11 @@ export function NewGroupModal({ allUsers, onClose }: NewGroupModalProps) {
         <div className="flex justify-end mt-6">
           <button
             onClick={handleCreateGroup}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:opacity-90"
+            disabled={creating}
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-glow transition-smooth hover:opacity-90 disabled:opacity-60"
           >
-            <Users className="h-4 w-4" />
-            Create Group
+            {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+            {creating ? "Creating..." : "Create Group"}
           </button>
         </div>
       </div>

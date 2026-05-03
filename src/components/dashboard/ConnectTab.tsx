@@ -104,15 +104,24 @@ function formatLastSeen(iso?: string) {
   return new Date(iso).toLocaleDateString();
 }
 
+interface ChatGroup {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  created_at: string;
+}
+
 export function ConnectTab() {
   usePresenceHeartbeat();
   const { user } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [presence, setPresence] = useState<Record<string, Presence>>({});
+  const [groups, setGroups] = useState<ChatGroup[]>([]);
   const [lastMessages, setLastMessages] = useState<Record<string, DM>>({});
   const [unread, setUnread] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [activePeer, setActivePeer] = useState<Profile | null>(null);
+  const [activeGroup, setActiveGroup] = useState<ChatGroup | null>(null);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
   const [loading, setLoading] = useState(true);
 
@@ -121,7 +130,7 @@ export function ConnectTab() {
     if (!user) return;
     let cancelled = false;
     void (async () => {
-      const [{ data: profiles }, { data: pres }, { data: msgs }] = await Promise.all([
+      const [{ data: profiles }, { data: pres }, { data: msgs }, { data: grps }] = await Promise.all([
         supabase.from("profiles").select("id, display_name, avatar_url").neq("id", user.id),
         supabase.from("user_presence").select("user_id, is_online, last_seen_at"),
         supabase
@@ -130,12 +139,17 @@ export function ConnectTab() {
           .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
           .order("created_at", { ascending: false })
           .limit(500),
+        supabase
+          .from("chat_groups")
+          .select("*, group_members!inner(user_id)")
+          .eq("group_members.user_id", user.id)
       ]);
       if (cancelled) return;
       setUsers(profiles ?? []);
       const pmap: Record<string, Presence> = {};
       (pres ?? []).forEach((p) => (pmap[p.user_id] = p as Presence));
       setPresence(pmap);
+      setGroups(grps as ChatGroup[] ?? []);
 
       const last: Record<string, DM> = {};
       const un: Record<string, number> = {};
@@ -185,6 +199,19 @@ export function ConnectTab() {
     };
   }, [user, activePeer]);
 
+  const sidebarItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const combined = [
+      ...users.map(u => ({ type: 'direct' as const, data: u })),
+      ...groups.map(g => ({ type: 'group' as const, data: g }))
+    ];
+    
+    if (!q) return combined;
+    return combined.filter(item => 
+      (item.type === 'direct' ? item.data.display_name : item.data.name)?.toLowerCase().includes(q)
+    );
+  }, [users, groups, search]);
+
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
     const sorted = [...users].sort((a, b) => {
@@ -201,6 +228,12 @@ export function ConnectTab() {
   const openPeer = (p: Profile) => {
     setActivePeer(p);
     setUnread((u) => ({ ...u, [p.id]: 0 }));
+    setActiveGroup(null);
+  };
+
+  const openGroup = (g: ChatGroup) => {
+    setActiveGroup(g);
+    setActivePeer(null);
   };
 
   return (
@@ -245,81 +278,62 @@ export function ConnectTab() {
               <div className="flex justify-center p-6">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ) : filteredUsers.length === 0 ? (
+            ) : sidebarItems.length === 0 ? (
               <p className="p-4 text-center text-xs text-muted-foreground">
                 No users found.
               </p>
             ) : (
-              filteredUsers.map((p) => {
-                const last = lastMessages[p.id];
-                const isOnline = presence[p.id]?.is_online;
-                const count = unread[p.id] ?? 0;
-                const initial = (p.display_name ?? "U").charAt(0).toUpperCase();
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => openPeer(p)}
-                    className={cn(
-                      "group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200",
-                      activePeer?.id === p.id 
-                        ? "bg-primary/10 ring-1 ring-primary/20" 
-                        : "hover:bg-secondary/50",
-                    )}
-                  >
-                    <div className="relative">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-base font-bold text-primary-foreground">
-                        {p.avatar_url ? (
-                          <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          initial
-                        )}
-                      </div>
-                      {isOnline && (
-                        <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500 ring-1 ring-green-500/50 animate-pulse" />
+              sidebarItems.map((item) => {
+                if (item.type === 'direct') {
+                  const p = item.data;
+                  const last = lastMessages[p.id];
+                  const isOnline = presence[p.id]?.is_online;
+                  const count = unread[p.id] ?? 0;
+                  const initial = (p.display_name ?? "U").charAt(0).toUpperCase();
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => openPeer(p)}
+                      className={cn(
+                        "group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200",
+                        activePeer?.id === p.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/50",
                       )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold">
-                          {p.display_name || "User"}
-                        </p>
-                        {last && (
-                          <span className="shrink-0 text-[10px] text-muted-foreground">
-                            {formatTime(last.created_at)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-                          {last && last.sender_id === user?.id && (
-                            <span>
-                              {last.read_at ? (
-                                <CheckCheck className="h-3 w-3 text-blue-400" />
-                              ) : (
-                                <Check className="h-3 w-3" />
-                              )}
-                            </span>
-                          )}
-                          <span className="truncate">
-                            {last
-                              ? last.content ??
-                                (last.attachment_type === "image"
-                                  ? "Photo"
-                                  : last.attachment_type === "voice"
-                                    ? "Voice message"
-                                    : "File")
-                              : "Say hi 👋"}
-                          </span>
+                    >
+                      <div className="relative">
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-base font-bold text-primary-foreground">
+                          {p.avatar_url ? <img src={p.avatar_url} alt="" className="h-full w-full object-cover" /> : initial}
                         </div>
-                        {count > 0 && (
-                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
-                            {count}
-                          </span>
-                        )}
+                        {isOnline && <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500 ring-1 ring-green-500/50 animate-pulse" />}
                       </div>
-                    </div>
-                  </button>
-                );
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-sm font-semibold">{p.display_name || "User"}</p>
+                          {last && <span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(last.created_at)}</span>}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                } else {
+                  const g = item.data;
+                  return (
+                    <button
+                      key={g.id}
+                      onClick={() => openGroup(g)}
+                      className={cn(
+                        "group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200",
+                        activeGroup?.id === g.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/50",
+                      )}
+                    >
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary">
+                        <Users className="h-6 w-6" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{g.name}</p>
+                        <p className="text-[10px] text-muted-foreground">Group</p>
+                      </div>
+                    </button>
+                  );
+                }
               })
             )}
           </div>
@@ -334,6 +348,12 @@ export function ConnectTab() {
               presence={presence[activePeer.id]}
               onBack={() => setActivePeer(null)}
               allUsers={users}
+            />
+          ) : activeGroup ? (
+            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-muted/5">
+               <Users className="h-10 w-10 text-primary mb-4 opacity-50" />
+               <h3 className="text-xl font-bold">{activeGroup.name}</h3>
+               <p className="text-sm text-muted-foreground mt-2">Group Chat UI Coming Soon...</p>
             />
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-muted/5">
