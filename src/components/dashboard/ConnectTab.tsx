@@ -1292,6 +1292,9 @@ function MessageItem({
   const [showReactions, setShowReactions] = useState(false);
   const [voiceSpeed, setVoiceSpeed] = useState(1);
 
+  const isForwarded = message.content?.startsWith("[Forwarded]");
+  const displayContent = isForwarded ? message.content?.replace("[Forwarded]\n", "") : message.content;
+
   return (
     <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
       <div className="relative group">
@@ -1339,7 +1342,17 @@ function MessageItem({
               <span className="truncate">{message.attachment_name ?? "File"}</span>
             </a>
           )}
-          {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+          {message.content && (
+            <div className="flex flex-col">
+              {isForwarded && (
+                <div className={cn("flex items-center gap-1 opacity-50 mb-1", mine ? "text-primary-foreground" : "text-muted-foreground")}>
+                  <Forward className="h-3 w-3" />
+                  <span className="text-[10px] italic font-medium">Forwarded</span>
+                </div>
+              )}
+              <p className="whitespace-pre-wrap break-words">{displayContent}</p>
+            </div>
+          )}
           <div
             className={cn(
               "mt-1 flex items-center justify-end gap-1 text-[10px]",
