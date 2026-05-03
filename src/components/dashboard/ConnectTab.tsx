@@ -34,6 +34,7 @@ import {
   Timer,
   Volume2,
   ChevronDown,
+  MessageSquare,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -370,7 +371,9 @@ function ChatWindow({
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [callDuration, setCallDuration] = useState(0);
   const callManagerRef = useRef<CallManager | null>(null);
-  if (!callManagerRef.current) {
+  
+  // Initialize CallManager only on client side
+  if (!callManagerRef.current && typeof window !== "undefined") {
     callManagerRef.current = new CallManager();
   }
   const callTimerRef = useRef<number | null>(null);
@@ -464,6 +467,7 @@ function ChatWindow({
 
   // Initialize CallManager listeners
   useEffect(() => {
+    if (!callManagerRef.current) return;
     const cm = callManagerRef.current!;
     cm.onRemoteStream((stream) => setRemoteStream(stream));
     cm.onStateChange((state) => {
