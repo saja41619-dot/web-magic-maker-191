@@ -282,7 +282,7 @@ function DashboardContent() {
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card/95 backdrop-blur-lg lg:hidden"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto grid max-w-md grid-cols-4">
+        <div className="flex gap-1 overflow-x-auto px-2 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = activeTab === item.key;
@@ -291,13 +291,13 @@ function DashboardContent() {
                 key={item.key}
                 onClick={() => setActiveTab(item.key)}
                 className={cn(
-                  "flex flex-col items-center justify-center gap-1 py-2.5 text-[11px] font-medium transition-smooth",
+                  "flex min-w-[68px] shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-2 py-1.5 text-[11px] font-medium transition-smooth",
                   active ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 <span
                   className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl transition-smooth",
+                    "flex h-8 w-8 items-center justify-center rounded-lg transition-smooth",
                     active && "bg-gradient-primary text-primary-foreground shadow-glow",
                   )}
                 >
