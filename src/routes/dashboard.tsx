@@ -269,6 +269,7 @@ function DashboardContent() {
               </h1>
             </div>
             {activeTab === "profile" && <ProfileTab />}
+            {activeTab === "chat" && <ChatTab />}
             {activeTab === "learning" && <LearningTab />}
             {activeTab === "services" && <ServicesTab />}
             {activeTab === "messages" && <MessagesTab />}
