@@ -223,13 +223,16 @@ export function ConnectTab() {
               />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <h3 className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+              Recent Chats
+            </h3>
             {loading ? (
               <div className="flex justify-center p-6">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : filteredUsers.length === 0 ? (
-              <p className="p-6 text-center text-sm text-muted-foreground">
+              <p className="p-4 text-center text-xs text-muted-foreground">
                 No users found.
               </p>
             ) : (
@@ -243,8 +246,10 @@ export function ConnectTab() {
                     key={p.id}
                     onClick={() => openPeer(p)}
                     className={cn(
-                      "flex w-full items-center gap-3 border-b border-border/50 p-3 text-left transition-smooth hover:bg-secondary/40",
-                      activePeer?.id === p.id && "bg-secondary/60",
+                      "group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200",
+                      activePeer?.id === p.id 
+                        ? "bg-primary/10 ring-1 ring-primary/20" 
+                        : "hover:bg-secondary/50",
                     )}
                   >
                     <div className="relative">
@@ -256,13 +261,13 @@ export function ConnectTab() {
                         )}
                       </div>
                       {isOnline && (
-                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-green-500" />
+                        <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500 ring-1 ring-green-500/50 animate-pulse" />
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
                         <p className="truncate text-sm font-semibold">
-                          {p.display_name ?? "User"}
+                          {p.display_name || "User"}
                         </p>
                         {last && (
                           <span className="shrink-0 text-[10px] text-muted-foreground">
@@ -305,12 +310,12 @@ export function ConnectTab() {
               onBack={() => setActivePeer(null)}
             />
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-              <div className="mb-3 rounded-full bg-primary/10 p-4">
-                <Send className="h-6 w-6 text-primary" />
+            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-muted/5">
+              <div className="mb-4 rounded-3xl bg-gradient-primary p-6 text-primary-foreground shadow-glow opacity-20">
+                <MessageSquare className="h-10 w-10" />
               </div>
-              <h3 className="font-display text-lg font-semibold">Your messages</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <h3 className="font-display text-xl font-bold">Connect with others</h3>
+              <p className="mt-2 max-w-[240px] text-sm text-muted-foreground leading-relaxed">
                 Select a user to start chatting.
               </p>
             </div>
@@ -728,8 +733,8 @@ function ChatWindow({
   return (
     <>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border bg-card/60 p-3">
-        <div className="flex items-center gap-3 flex-1">
+      <div className="flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-md px-4 py-3 sticky top-0 z-10">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             onClick={onBack}
             className="rounded-lg p-1.5 hover:bg-secondary md:hidden"
@@ -746,7 +751,7 @@ function ChatWindow({
               )}
             </div>
             {isOnline && (
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-green-500" />
+              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-green-500 animate-pulse" />
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -903,7 +908,7 @@ function ChatWindow({
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 space-y-2 overflow-y-auto bg-gradient-to-b from-background/50 to-background/20 p-4"
+        className="flex-1 space-y-4 overflow-y-auto bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent p-4 scrollbar-thin scrollbar-thumb-border"
       >
         {filteredMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
@@ -968,7 +973,7 @@ function ChatWindow({
       </div>
 
       {/* Composer */}
-      <div className="relative border-t border-border bg-card p-3 space-y-2">
+      <div className="relative border-t border-border bg-card/80 backdrop-blur-md p-4 space-y-3">
         {/* Reply Preview */}
         {replyingTo && (
           <div className="flex items-center gap-2 bg-primary/10 p-2 rounded-lg">
@@ -1205,10 +1210,10 @@ function MessageItem({
       <div className="relative group">
         <div
           className={cn(
-            "max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm",
+            "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-elegant transition-all",
             mine
-              ? "rounded-br-sm bg-gradient-primary text-primary-foreground"
-              : "rounded-bl-sm bg-card text-foreground",
+              ? "rounded-tr-none bg-gradient-primary text-primary-foreground"
+              : "rounded-tl-none bg-card border border-border text-foreground",
           )}
         >
           {isPinned && (
