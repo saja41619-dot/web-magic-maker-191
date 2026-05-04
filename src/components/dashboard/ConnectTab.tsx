@@ -109,6 +109,7 @@ interface ChatGroup {
   name: string;
   avatar_url: string | null;
   created_at: string;
+  created_by: string;
 }
 
 export function ConnectTab() {
@@ -1295,6 +1296,25 @@ function ChatWindow({
   );
 }
 
+interface GroupMessage {
+  id: string;
+  group_id: string;
+  sender_id: string;
+  content: string | null;
+  attachment_url: string | null;
+  attachment_type: "image" | "file" | "voice" | null;
+  attachment_name: string | null;
+  reply_to_id: string | null;
+  created_at: string;
+}
+
+interface GroupMember {
+  id: string;
+  user_id: string;
+  group_id: string;
+  role: string;
+}
+
 function GroupChatWindow({
   group,
   onBack,
@@ -1305,84 +1325,552 @@ function GroupChatWindow({
   allUsers: Profile[];
 }) {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<GroupMessage[]>([]);
+  const [members, setMembers] = useState<GroupMember[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<GroupMessage | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
+  const [onlineMap, setOnlineMap] = useState<Record<string, boolean>>({});
+  const [readsByMessage, setReadsByMessage] = useState<Record<string, string[]>>({});
+  const [showReceiptsFor, setShowReceiptsFor] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastTypingSent = useRef(0);
 
+  const isAdmin = useMemo(
+    () => members.some((m) => m.user_id === user?.id && m.role === "admin"),
+    [members, user]
+  );
+
+  // Initial load: messages + members + reads + presence
   useEffect(() => {
     if (!user) return;
-    const loadMessages = async () => {
-      const { data } = await supabase
-        .from("group_messages")
-        .select("*")
-        .eq("group_id", group.id)
-        .order("created_at", { ascending: true });
-      setMessages(data || []);
-    };
-    void loadMessages();
+    let cancelled = false;
+    void (async () => {
+      const [{ data: msgs }, { data: mems }, { data: pres }] = await Promise.all([
+        supabase.from("group_messages").select("*").eq("group_id", group.id).order("created_at", { ascending: true }).limit(500),
+        supabase.from("group_members").select("*").eq("group_id", group.id),
+        supabase.from("user_presence").select("*"),
+      ]);
+      if (cancelled) return;
+      setMessages((msgs ?? []) as GroupMessage[]);
+      setMembers((mems ?? []) as GroupMember[]);
+      const pmap: Record<string, boolean> = {};
+      (pres ?? []).forEach((p: any) => (pmap[p.user_id] = !!p.is_online));
+      setOnlineMap(pmap);
 
-    const ch = supabase.channel(`group:${group.id}`)
-      .on("postgres_changes", { 
-        event: "INSERT", 
-        schema: "public", 
-        table: "group_messages", 
-        filter: `group_id=eq.${group.id}` 
+      const ids = (msgs ?? []).map((m: any) => m.id);
+      if (ids.length > 0) {
+        const { data: reads } = await supabase
+          .from("group_message_reads")
+          .select("message_id, user_id")
+          .in("message_id", ids);
+        const rmap: Record<string, string[]> = {};
+        (reads ?? []).forEach((r: any) => {
+          rmap[r.message_id] = [...(rmap[r.message_id] ?? []), r.user_id];
+        });
+        setReadsByMessage(rmap);
+      }
+
+      // Mark all unread messages as read by me
+      const toMark = (msgs ?? []).filter((m: any) => m.sender_id !== user.id);
+      if (toMark.length > 0) {
+        await supabase
+          .from("group_message_reads")
+          .upsert(
+            toMark.map((m: any) => ({
+              message_id: m.id,
+              user_id: user.id,
+              group_id: group.id,
+            })),
+            { onConflict: "message_id,user_id", ignoreDuplicates: true }
+          );
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, group.id]);
+
+  // Realtime: messages, members, reads
+  useEffect(() => {
+    if (!user) return;
+    const ch = supabase
+      .channel(`group:${group.id}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "group_messages",
+        filter: `group_id=eq.${group.id}`,
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new]);
+        const m = payload.new as GroupMessage;
+        setMessages((prev) => prev.some((x) => x.id === m.id) ? prev : [...prev, m]);
+        if (m.sender_id !== user.id) {
+          void supabase.from("group_message_reads").upsert(
+            { message_id: m.id, user_id: user.id, group_id: group.id },
+            { onConflict: "message_id,user_id", ignoreDuplicates: true }
+          );
+        }
+      })
+      .on("postgres_changes", {
+        event: "DELETE", schema: "public", table: "group_messages",
+        filter: `group_id=eq.${group.id}`,
+      }, (payload) => {
+        const old = payload.old as { id: string };
+        setMessages((prev) => prev.filter((m) => m.id !== old.id));
+      })
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "group_members",
+        filter: `group_id=eq.${group.id}`,
+      }, () => {
+        void supabase.from("group_members").select("*").eq("group_id", group.id)
+          .then(({ data }) => setMembers((data ?? []) as GroupMember[]));
+      })
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "group_message_reads",
+        filter: `group_id=eq.${group.id}`,
+      }, (payload) => {
+        const r = payload.new as { message_id: string; user_id: string };
+        setReadsByMessage((prev) => {
+          const current = prev[r.message_id] ?? [];
+          if (current.includes(r.user_id)) return prev;
+          return { ...prev, [r.message_id]: [...current, r.user_id] };
+        });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "user_presence" }, (payload) => {
+        const p = payload.new as any;
+        if (p) setOnlineMap((prev) => ({ ...prev, [p.user_id]: !!p.is_online }));
       })
       .subscribe();
 
-    return () => { void supabase.removeChannel(ch); };
+    // Typing presence channel
+    const typingCh = supabase.channel(`group-typing:${group.id}`, {
+      config: { broadcast: { self: false } },
+    });
+    typingCh.on("broadcast", { event: "typing" }, (payload) => {
+      const { from, name } = payload.payload as { from: string; name: string };
+      if (from === user.id) return;
+      setTypingUsers((prev) => ({ ...prev, [from]: name }));
+      window.setTimeout(() => {
+        setTypingUsers((prev) => {
+          const next = { ...prev };
+          delete next[from];
+          return next;
+        });
+      }, 2500);
+    }).subscribe();
+    typingChannelRef.current = typingCh;
+
+    return () => {
+      void supabase.removeChannel(ch);
+      void supabase.removeChannel(typingCh);
+      typingChannelRef.current = null;
+    };
   }, [group.id, user]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [messages, typingUsers]);
 
-  const send = async () => {
-    if (!text.trim() || !user) return;
-    setSending(true);
-    await supabase.from("group_messages").insert({
-      group_id: group.id,
-      sender_id: user.id,
-      content: text.trim()
+  const sendTyping = () => {
+    const now = Date.now();
+    if (now - lastTypingSent.current < 1500) return;
+    lastTypingSent.current = now;
+    const meName = allUsers.find((u) => u.id === user?.id)?.display_name
+      || user?.user_metadata?.display_name || "Someone";
+    typingChannelRef.current?.send({
+      type: "broadcast",
+      event: "typing",
+      payload: { from: user?.id, name: meName },
     });
-    setText("");
-    setSending(false);
   };
+
+  const send = async (overrides?: Partial<GroupMessage>) => {
+    if (!user) return;
+    const content = (overrides?.content ?? text).trim();
+    if (!content && !overrides?.attachment_url) return;
+    setSending(true);
+    try {
+      const payload = {
+        group_id: group.id,
+        sender_id: user.id,
+        content: overrides?.attachment_url ? overrides?.content ?? null : content || null,
+        attachment_url: overrides?.attachment_url ?? null,
+        attachment_type: overrides?.attachment_type ?? null,
+        attachment_name: overrides?.attachment_name ?? null,
+        reply_to_id: replyingTo?.id ?? null,
+      };
+      const { error } = await supabase.from("group_messages").insert(payload);
+      if (error) throw error;
+      if (!overrides?.attachment_url) setText("");
+      setReplyingTo(null);
+      setShowEmoji(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const uploadAndSend = async (file: File, type: "image" | "file" | "voice") => {
+    if (!user) return;
+    setSending(true);
+    try {
+      const ext = file.name.split(".").pop() ?? "bin";
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("chat-attachments")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      const { data: signed } = await supabase.storage
+        .from("chat-attachments")
+        .createSignedUrl(path, 60 * 60 * 24 * 365);
+      const url = signed?.signedUrl ?? "";
+      await send({
+        attachment_url: url,
+        attachment_type: type,
+        attachment_name: file.name,
+      });
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const deleteMessage = async (msgId: string) => {
+    const { error } = await supabase.from("group_messages").delete().eq("id", msgId);
+    if (error) toast.error(error.message);
+    else setMessages((prev) => prev.filter((m) => m.id !== msgId));
+  };
+
+  const addMember = async (profile: Profile) => {
+    const { error } = await supabase.from("group_members").insert({
+      group_id: group.id, user_id: profile.id, role: "member",
+    });
+    if (error) toast.error(error.message);
+    else {
+      toast.success(`${profile.display_name || "User"} added`);
+      setShowAddMember(false);
+    }
+  };
+
+  const removeMember = async (memberId: string, userId: string) => {
+    if (userId === group.created_by) {
+      toast.error("Cannot remove the group creator");
+      return;
+    }
+    const { error } = await supabase.from("group_members").delete().eq("id", memberId);
+    if (error) toast.error(error.message);
+    else toast.success("Member removed");
+  };
+
+  const onlineMembersCount = members.filter((m) => onlineMap[m.user_id]).length;
+  const memberIds = new Set(members.map((m) => m.user_id));
+  const nonMembers = allUsers.filter((u) => !memberIds.has(u.id));
+  const typingNames = Object.values(typingUsers);
 
   return (
     <>
-      <div className="flex items-center gap-3 border-b border-border bg-card/80 backdrop-blur-md px-4 py-3 sticky top-0 z-10">
-        <button onClick={onBack} className="md:hidden p-1.5 hover:bg-secondary rounded-lg"><ArrowLeft className="h-4 w-4" /></button>
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Users className="h-5 w-5" />
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-md px-4 py-3 sticky top-0 z-10">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button onClick={onBack} className="md:hidden p-1.5 hover:bg-secondary rounded-lg" aria-label="Back">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <button onClick={() => setShowInfo(true)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Users className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold truncate text-sm">{group.name}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {typingNames.length > 0
+                  ? `${typingNames.slice(0, 2).join(", ")} ${typingNames.length === 1 ? "is" : "are"} typing…`
+                  : `${members.length} members${onlineMembersCount > 0 ? ` • ${onlineMembersCount} online` : ""}`}
+              </p>
+            </div>
+          </button>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold truncate">{group.name}</p>
-          <p className="text-xs text-muted-foreground">Group chat</p>
-        </div>
+        <button onClick={() => setShowInfo(true)} className="rounded-lg p-2 hover:bg-secondary text-muted-foreground" aria-label="Group info">
+          <Info className="h-5 w-5" />
+        </button>
       </div>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4" style={{ backgroundColor: "#0b141a", backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`, backgroundBlendMode: "overlay" }}>
+
+      {/* Messages */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 space-y-3"
+        style={{
+          backgroundColor: "#0b141a",
+          backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
+          backgroundBlendMode: "overlay",
+        }}
+      >
         {messages.map((m) => {
           const mine = m.sender_id === user?.id;
-          const sender = allUsers.find(u => u.id === m.sender_id);
+          const sender = allUsers.find((u) => u.id === m.sender_id);
+          const replied = m.reply_to_id ? messages.find((x) => x.id === m.reply_to_id) : null;
+          const repliedSender = replied ? allUsers.find((u) => u.id === replied.sender_id) : null;
+          const reads = readsByMessage[m.id] ?? [];
+          const otherMembers = members.filter((mm) => mm.user_id !== user?.id);
+          const readByOthers = reads.filter((uid) => uid !== user?.id);
+          const allRead = otherMembers.length > 0 && readByOthers.length >= otherMembers.length;
+          const someRead = readByOthers.length > 0;
+
           return (
-            <MessageItem 
-              key={m.id} message={m} mine={mine} 
-              senderName={!mine ? (sender?.display_name || "Unknown") : undefined}
-              onDelete={() => {}} onCopy={() => {}} onReact={() => {}} reactions={[]}
-              onPin={() => {}} onStar={() => {}} onForward={() => {}} onReply={() => {}}
-              onEdit={() => {}} onReport={() => {}} isPinned={false} isStarred={false}
-            />
+            <div key={m.id} className={cn("flex flex-col group", mine ? "items-end" : "items-start")}>
+              {!mine && (
+                <span className="text-[10px] font-bold text-primary/90 mb-0.5 ml-2">
+                  {sender?.display_name || "Unknown"}
+                </span>
+              )}
+              <div className={cn(
+                "relative max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-elegant",
+                mine ? "rounded-tr-none bg-gradient-primary text-primary-foreground" : "rounded-tl-none bg-card border border-border text-foreground"
+              )}>
+                {replied && (
+                  <div className={cn(
+                    "mb-1.5 rounded-lg p-2 border-l-4 text-xs",
+                    mine ? "bg-white/10 border-white/40" : "bg-secondary border-primary/40"
+                  )}>
+                    <p className="font-bold opacity-80">{repliedSender?.display_name || "Unknown"}</p>
+                    <p className="truncate opacity-70">
+                      {replied.content || (replied.attachment_type === "image" ? "📷 Photo" : replied.attachment_type === "voice" ? "🎤 Voice" : "📎 File")}
+                    </p>
+                  </div>
+                )}
+                {m.attachment_type === "image" && m.attachment_url && (
+                  <a href={m.attachment_url} target="_blank" rel="noreferrer">
+                    <img src={m.attachment_url} alt={m.attachment_name ?? ""} className="mb-1 max-h-64 rounded-lg object-cover" />
+                  </a>
+                )}
+                {m.attachment_type === "voice" && m.attachment_url && (
+                  <VoicePlayer url={m.attachment_url} mine={mine} />
+                )}
+                {m.attachment_type === "file" && m.attachment_url && (
+                  <a href={m.attachment_url} target="_blank" rel="noreferrer"
+                    className={cn("mb-1 flex items-center gap-2 rounded-lg p-2 hover:underline", mine ? "bg-white/10" : "bg-secondary")}>
+                    <FileText className="h-4 w-4" />
+                    <span className="truncate">{m.attachment_name ?? "File"}</span>
+                  </a>
+                )}
+                {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
+                <div className={cn("mt-1 flex items-center justify-end gap-1 text-[10px]",
+                  mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                  <span>{formatTime(m.created_at)}</span>
+                  {mine && (
+                    <button onClick={() => setShowReceiptsFor(showReceiptsFor === m.id ? null : m.id)}
+                      className="hover:opacity-100 opacity-80" title="Read by">
+                      {allRead ? <CheckCheck className="h-3 w-3 text-blue-300" /> :
+                       someRead ? <CheckCheck className="h-3 w-3" /> :
+                       <Check className="h-3 w-3" />}
+                    </button>
+                  )}
+                </div>
+
+                {/* Hover actions */}
+                <div className={cn(
+                  "absolute top-0 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 pb-1",
+                  mine ? "right-0" : "left-0"
+                )}>
+                  <button onClick={() => setReplyingTo(m)} className="rounded-full bg-card border border-border p-1.5 hover:bg-secondary" title="Reply">
+                    <Reply className="h-3.5 w-3.5" />
+                  </button>
+                  {m.content && (
+                    <button onClick={() => { navigator.clipboard.writeText(m.content!); toast.success("Copied"); }}
+                      className="rounded-full bg-card border border-border p-1.5 hover:bg-secondary" title="Copy">
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {mine && (
+                    <button onClick={() => deleteMessage(m.id)} className="rounded-full bg-card border border-border p-1.5 hover:bg-destructive/10 text-destructive" title="Delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Read receipts dropdown */}
+              {showReceiptsFor === m.id && mine && (
+                <div className="mt-1 rounded-lg border border-border bg-card p-2 text-xs shadow-lg max-w-[280px]">
+                  <p className="font-semibold mb-1.5 text-foreground">Read by ({readByOthers.length}/{otherMembers.length})</p>
+                  {readByOthers.length === 0 ? (
+                    <p className="text-muted-foreground">No one yet</p>
+                  ) : (
+                    <ul className="space-y-1">
+                      {readByOthers.map((uid) => {
+                        const u = allUsers.find((p) => p.id === uid);
+                        return <li key={uid} className="text-muted-foreground">• {u?.display_name || "User"}</li>;
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
           );
         })}
+        {typingNames.length > 0 && (
+          <div className="text-xs text-white/70 italic ml-2">
+            {typingNames.slice(0, 2).join(", ")} {typingNames.length === 1 ? "is" : "are"} typing…
+          </div>
+        )}
       </div>
-      <div className="p-4 border-t border-border bg-card/80 backdrop-blur-md flex gap-2">
-        <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === 'Enter' && send()} placeholder="Type a message..." className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary" />
-        <button onClick={send} disabled={sending} className="h-10 w-10 flex items-center justify-center rounded-full bg-gradient-primary text-white shadow-glow"><Send className="h-4 w-4" /></button>
+
+      {/* Reply preview */}
+      {replyingTo && (
+        <div className="px-4 py-2 bg-muted/50 border-t border-border flex justify-between items-center">
+          <div className="border-l-4 border-primary pl-2 overflow-hidden flex-1 min-w-0">
+            <p className="text-xs font-bold text-primary">
+              {allUsers.find((u) => u.id === replyingTo.sender_id)?.display_name || "Unknown"}
+            </p>
+            <p className="text-sm truncate text-muted-foreground">
+              {replyingTo.content || (replyingTo.attachment_type === "image" ? "📷 Photo" : replyingTo.attachment_type === "voice" ? "🎤 Voice" : "📎 File")}
+            </p>
+          </div>
+          <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-muted rounded-full">
+            <X className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </div>
+      )}
+
+      {/* Composer */}
+      <div className="p-3 border-t border-border bg-card/80 backdrop-blur-md">
+        {showEmoji && (
+          <div className="mb-2">
+            <EmojiPicker
+              theme={Theme.AUTO}
+              onEmojiClick={(e) => setText((t) => t + e.emoji)}
+              width="100%"
+              height={320}
+            />
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <button onClick={() => setShowEmoji((s) => !s)} className="p-2 rounded-full hover:bg-secondary text-muted-foreground" aria-label="Emoji">
+            <Smile className="h-5 w-5" />
+          </button>
+          <button onClick={() => imageInputRef.current?.click()} className="p-2 rounded-full hover:bg-secondary text-muted-foreground" aria-label="Image">
+            <ImageIcon className="h-5 w-5" />
+          </button>
+          <input ref={imageInputRef} type="file" accept="image/*" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadAndSend(f, "image"); e.target.value = ""; }} />
+          <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full hover:bg-secondary text-muted-foreground" aria-label="File">
+            <Paperclip className="h-5 w-5" />
+          </button>
+          <input ref={fileInputRef} type="file" className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadAndSend(f, "file"); e.target.value = ""; }} />
+          <input
+            value={text}
+            onChange={(e) => { setText(e.target.value); sendTyping(); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
+            placeholder="Type a message…"
+            className="flex-1 bg-background border border-border rounded-full px-4 py-2.5 text-sm outline-none focus:border-primary"
+          />
+          {text.trim() ? (
+            <button onClick={() => void send()} disabled={sending}
+              className="h-10 w-10 flex items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow disabled:opacity-50">
+              <Send className="h-4 w-4" />
+            </button>
+          ) : (
+            <VoiceRecorder onRecorded={(file) => void uploadAndSend(file, "voice")} />
+          )}
+        </div>
       </div>
+
+      {/* Group Info Modal */}
+      {showInfo && (
+        <div className="fixed inset-0 z-[103] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4" onClick={() => setShowInfo(false)}>
+          <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-2xl border border-border bg-card shadow-elegant" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="font-display text-lg font-bold">Group Info</h3>
+              <button onClick={() => setShowInfo(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-4 flex flex-col items-center text-center border-b border-border">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
+                <Users className="h-10 w-10" />
+              </div>
+              <h4 className="font-bold text-lg">{group.name}</h4>
+              <p className="text-xs text-muted-foreground mt-1">
+                Group • {members.length} members • Created {new Date(group.created_at).toLocaleDateString()}
+              </p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  {members.length} Members
+                </p>
+                {isAdmin && (
+                  <button onClick={() => setShowAddMember(true)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                    + Add member
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1">
+                {members.map((m) => {
+                  const profile = allUsers.find((u) => u.id === m.user_id) || (user?.id === m.user_id ? { id: user.id, display_name: "You", avatar_url: null } as Profile : null);
+                  const name = m.user_id === user?.id ? "You" : (profile?.display_name || "Unknown");
+                  const isOnline = onlineMap[m.user_id];
+                  return (
+                    <div key={m.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-secondary/50">
+                      <div className="relative">
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+                          {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0).toUpperCase()}
+                        </div>
+                        {isOnline && <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-green-500" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{name}</p>
+                        <p className="text-[10px] text-muted-foreground capitalize">
+                          {m.role}{m.user_id === group.created_by ? " • creator" : ""}
+                        </p>
+                      </div>
+                      {isAdmin && m.user_id !== user?.id && m.user_id !== group.created_by && (
+                        <button onClick={() => void removeMember(m.id, m.user_id)}
+                          className="p-1.5 rounded-full hover:bg-destructive/10 text-destructive" title="Remove">
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Member Modal */}
+      {showAddMember && (
+        <div className="fixed inset-0 z-[104] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4" onClick={() => setShowAddMember(false)}>
+          <div className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl border border-border bg-card shadow-elegant" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="font-display text-lg font-bold">Add Member</h3>
+              <button onClick={() => setShowAddMember(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3">
+              {nonMembers.length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-6">All users are already members.</p>
+              ) : nonMembers.map((u) => (
+                <button key={u.id} onClick={() => void addMember(u)}
+                  className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-secondary/50 text-left">
+                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+                    {u.avatar_url ? <img src={u.avatar_url} alt="" className="h-full w-full object-cover" /> : (u.display_name?.charAt(0).toUpperCase() || "U")}
+                  </div>
+                  <p className="text-sm font-medium truncate">{u.display_name || "User"}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
