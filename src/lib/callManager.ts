@@ -43,7 +43,7 @@ export class CallManager {
     }
   }
 
-  async initiateCall(callType: "voice" | "video"): Promise<RTCSessionDescription> {
+  async initiateCall(callType: "voice" | "video"): Promise<RTCSessionDescriptionInit> {
     try {
       const audio = true;
       const video = callType === "video";
@@ -76,7 +76,7 @@ export class CallManager {
     }
   }
 
-  async answerCall(offer: RTCSessionDescription, callType: "voice" | "video"): Promise<RTCSessionDescription> {
+  async answerCall(offer: RTCSessionDescriptionInit, callType: "voice" | "video"): Promise<RTCSessionDescriptionInit> {
     try {
       const audio = true;
       const video = callType === "video";
@@ -113,7 +113,7 @@ export class CallManager {
     }
   }
 
-  async handleRemoteAnswer(answer: RTCSessionDescription): Promise<void> {
+  async handleRemoteAnswer(answer: RTCSessionDescriptionInit): Promise<void> {
     try {
       if (this.peerConnection) {
         await this.peerConnection.setRemoteDescription(
@@ -149,7 +149,7 @@ export class CallManager {
 
     this.peerConnection.onconnectionstatechange = () => {
       const state = this.peerConnection?.connectionState;
-      if (state === "connected" || state === "completed") {
+      if (state === "connected") {
         this.onStateChangeCallback?.("active");
       } else if (state === "disconnected" || state === "failed" || state === "closed") {
         this.onStateChangeCallback?.("ended");
