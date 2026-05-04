@@ -3,8 +3,20 @@ import { format } from "date-fns";
 import { Reply, Smile } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface ChatMessage {
+  id: string;
+  user_id: string;
+  content: string;
+  reply_to?: string;
+  file_url?: string;
+  is_read?: boolean;
+  created_at: string;
+  profiles: { display_name: string | null; avatar_url: string | null } | null;
+  replied_message: { content: string; profiles: { display_name: string | null } | null } | null;
+}
+
 interface ChatBubbleProps {
-  message: any;
+  message: ChatMessage;
   isOwn: boolean;
   onReply: () => void;
 }

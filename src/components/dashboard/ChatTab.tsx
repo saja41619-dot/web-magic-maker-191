@@ -4,18 +4,33 @@ import { useAuth } from "@/hooks/use-auth";
 import { Send, Paperclip, X, Smile } from "lucide-react";
 import { toast } from "sonner";
 import { ChatBubble } from "./ChatBubble";
+import { RealtimeChannel } from '@supabase/supabase-js';
+
+interface ChatMessage {
+  id: string;
+  user_id: string;
+  content: string;
+  reply_to?: string;
+  file_url?: string;
+  is_read: boolean;
+  created_at: string;
+  profiles: { display_name: string | null; avatar_url: string | null } | null;
+  replied_message: { content: string; profiles: { display_name: string | null } | null } | null;
+}
 
 export const ChatTab = () => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
-  const [replyTo, setReplyTo] = useState<any>(null);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<any>({});
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<any>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
+    if (!user) return;
+
     // 1. Initial Fetch of messages with profile and reply info
     const fetchMessages = async () => {
       const { data, error } = await supabase
@@ -28,14 +43,14 @@ export const ChatTab = () => {
         .order('created_at', { ascending: true });
       
       if (error) toast.error(error.message);
-      else setMessages(data || []);
+      else setMessages((data as any) || []);
     };
 
     fetchMessages();
 
     // 2. Realtime Subscription & Presence Logic
     const channel = supabase.channel('group-chat', {
-      config: { presence: { key: user?.id } }
+      config: { presence: { key: user.id } }
     });
 
     channel
@@ -44,10 +59,10 @@ export const ChatTab = () => {
         supabase
           .from('chat_messages')
           .select('*, profiles:user_id(display_name, avatar_url), replied_message:reply_to(content, profiles:user_id(display_name))')
-          .eq('id', payload.new.id)
+          .eq('id', (payload.new as any).id)
           .single()
           .then(({ data }) => {
-            if (data) setMessages(prev => [...prev, data]);
+            if (data) setMessages(prev => [...prev, data as any]);
           });
       })
       .on('presence', { event: 'sync' }, () => {
@@ -57,15 +72,15 @@ export const ChatTab = () => {
         // Filter typing users excluding current user
         const typing = Object.values(state)
           .flat()
-          .filter((p: any) => p.isTyping && p.user_id !== user?.id)
+          .filter((p: any) => p.isTyping && p.user_id !== user.id)
           .map((p: any) => p.display_name);
         setTypingUsers(typing);
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({
-            user_id: user?.id,
-            display_name: user?.user_metadata?.display_name || 'Anonymous',
+            user_id: user.id,
+            display_name: (user.user_metadata as any)?.display_name || 'Anonymous',
             online_at: new Date().toISOString(),
             isTyping: false
           });
@@ -84,20 +99,21 @@ export const ChatTab = () => {
   }, [messages, typingUsers]);
 
   const handleTyping = (text: string) => {
+    if (!user) return;
     setInputText(text);
     channelRef.current?.track({
-      user_id: user?.id,
-      display_name: user?.user_metadata?.display_name || 'Anonymous',
+      user_id: user.id,
+      display_name: (user.user_metadata as any)?.display_name || 'Anonymous',
       isTyping: text.length > 0
     });
   };
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !user) return;
 
     const { error } = await supabase.from('chat_messages').insert({
-      user_id: user?.id,
+      user_id: user.id,
       content: inputText,
       reply_to: replyTo?.id
     });

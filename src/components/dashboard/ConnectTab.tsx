@@ -39,7 +39,7 @@ import {
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/use-auth";
 import { usePresenceHeartbeat } from "@/lib/usePresence";
 import { CallManager, CallState, CallType } from "@/lib/callManager";
 import { CallUI } from "@/components/CallUI";
@@ -556,22 +556,22 @@ function ChatWindow({
 
     signalingCh
       .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
-        if (callStateRef.current !== "idle" && callStateRef.current !== "ended") return; // Busy
+        if (callStateRef.current !== "idle" && callStateRef.current !== "ended") return;
         const { offer, callType: incomingType } = payload;
         setCallType(incomingType);
-        const answer = await callManagerRef.current!.answerCall(offer, incomingType);
-        setLocalStream(callManagerRef.current!.getLocalStream());
+        const answer = await callManagerRef.current?.answerCall(offer, incomingType);
+        setLocalStream(callManagerRef.current?.getLocalStream() || null);
         signalingCh.send({
           type: "broadcast",
           event: "call-answer",
           payload: { answer },
         });
 
-        callManagerRef.current!.getIceCandidates((candidate) => {
+        callManagerRef.current?.getIceCandidates((candidate) => {
           if (candidate) {
             signalingCh.send({
               type: "broadcast",
-              event: "ice-candidate",
+              event: "call-candidate",
               payload: { candidate },
             });
           }
@@ -579,16 +579,16 @@ function ChatWindow({
       })
       .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
         const { answer } = payload;
-        await callManagerRef.current!.handleRemoteAnswer(answer);
+        await callManagerRef.current?.handleRemoteAnswer(answer);
       })
       .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
         const { candidate } = payload;
         if (candidate) {
-          await callManagerRef.current!.addIceCandidate(candidate);
+          await callManagerRef.current?.addIceCandidate(candidate);
         }
       })
       .on("broadcast", { event: "call-end" }, () => {
-        callManagerRef.current!.endCall();
+        callManagerRef.current?.endCall();
       })
       .subscribe();
 
@@ -1498,7 +1498,7 @@ function MessageItem({
           >
             <span>{formatTime(message.created_at)}</span>
             {message.edited_at && <span className="text-[8px]">(edited)</span>}
-            {mine &&
+            {mine && message.read_at !== undefined &&
               (message.read_at ? (
                 <CheckCheck className="h-3 w-3" />
               ) : (
