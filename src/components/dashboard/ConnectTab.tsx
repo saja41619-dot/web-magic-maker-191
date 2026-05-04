@@ -39,7 +39,7 @@ import {
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/lib/auth";
 import { usePresenceHeartbeat } from "@/lib/usePresence";
 import { CallManager, CallState, CallType } from "@/lib/callManager";
 import { CallUI } from "@/components/CallUI";
@@ -571,7 +571,7 @@ function ChatWindow({
           if (candidate) {
             signalingCh.send({
               type: "broadcast",
-              event: "call-candidate",
+              event: "ice-candidate",
               payload: { candidate },
             });
           }
@@ -1404,7 +1404,7 @@ function MessageItem({
   isStarred,
   senderName,
 }: {
-  message: DM;
+  message: any;
   mine: boolean;
   onDelete: () => void;
   onCopy: () => void;

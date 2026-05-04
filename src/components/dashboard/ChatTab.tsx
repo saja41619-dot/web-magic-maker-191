@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Send, Paperclip, X, Smile } from "lucide-react";
@@ -11,8 +11,7 @@ interface ChatMessage {
   user_id: string;
   content: string;
   reply_to?: string;
-  file_url?: string;
-  is_read: boolean;
+  is_read?: boolean;
   created_at: string;
   profiles: { display_name: string | null; avatar_url: string | null } | null;
   replied_message: { content: string; profiles: { display_name: string | null } | null } | null;
