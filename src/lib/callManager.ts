@@ -43,7 +43,7 @@ export class CallManager {
     }
   }
 
-  async initiateCall(callType: "voice" | "video"): Promise<RTCSessionDescription> {
+  async initiateCall(callType: "voice" | "video"): Promise<RTCSessionDescriptionInit> {
     try {
       const audio = true;
       const video = callType === "video";
