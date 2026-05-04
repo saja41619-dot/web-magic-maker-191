@@ -127,7 +127,11 @@ export function ConnectTab() {
 
   const loadData = async () => {
     if (!user) return;
-    {  ;
+    setLoading(true);
+    try {
+      const { data: profiles } = await supabase.from("profiles").select("*").neq("id", user.id);
+      const { data: pres } = await supabase.from("user_presence").select("*");
+      const { data: grps, error: grpErr } = await supabase.from("chat_groups").select("*");
 
       if (grpErr) {
         console.error("Error loading groups:", grpErr);
@@ -135,15 +139,13 @@ export function ConnectTab() {
 
       setUsers(profiles ?? []);
       const pmap: Record<string, Presence> = {};
-      (pres ?? []).forEach((p) => (pmap[p.user_id] = p as Presence));
+      (pres ?? []).forEach((p: any) => (pmap[p.user_id] = p as Presence));
       setPresence(pmap);
       
       if (grps) {
         setGroups(grps as unknown as ChatGroup[]);
       }
 
-      const last: Record<string, DM> = {};
-        });ad(un);
       setLoading(false);
     } catch (err) {
       console.error("Critical load data error:", err);
@@ -168,8 +170,18 @@ export function ConnectTab() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "user_presence" },
-        (p   eTlo
-     ges((prev) => ({ ...prev, [peer]: m }));
+        (payload) => {
+          const p = payload.new as Presence;
+          if (p) setPresence((prev) => ({ ...prev, [p.user_id]: p }));
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "direct_messages" },
+        (payload) => {
+          const m = payload.new as DM;
+          const peer = m.sender_id === user.id ? m.recipient_id : m.sender_id;
+          setLastMessages((prev) => ({ ...prev, [peer]: m }));
           if (m.recipient_id === user.id && (!activePeer || activePeer.id !== m.sender_id)) {
             setUnread((u) => ({ ...u, [peer]: (u[peer] ?? 0) + 1 }));
           }
