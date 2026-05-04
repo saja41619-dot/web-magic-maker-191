@@ -17,7 +17,7 @@ interface NewGroupModalProps {
   onGroupCreated?: () => void;
 }
 
-export function NewGroupModal({ allUsers, onClose, onGroupCreated }: NewGroupModalProps & { onGroupCreated?: () => void }) {
+export function NewGroupModal({ allUsers, onClose, onGroupCreated }: NewGroupModalProps) {
   const { user } = useAuth();
   const [groupName, setGroupName] = useState("");
   const [selectedUsers, setSelectedUsers] = useState<Profile[]>([]);
@@ -57,7 +57,7 @@ export function NewGroupModal({ allUsers, onClose, onGroupCreated }: NewGroupMod
       // 1. Create the group
       const { data: group, error: groupError } = await supabase
         .from("chat_groups")
-        .insert({ name: groupName.trim(), created_by: user.id })
+        .insert([{ name: groupName.trim(), created_by: user.id }])
         .select()
         .single();
       

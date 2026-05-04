@@ -36,6 +36,25 @@ Dashboard-il ee sections ellam chErkkam. Tab-based layout aakum so dashboard cle
 **UI:**
 - User-nte ayacha messages list (date, message preview, read status by admin)
 
+### 2.1 Group Chat tab (New)
+
+**Database changes:**
+- New table `chat_messages`:
+  - `id uuid pk`, `user_id uuid references profiles(id)`, `content text`, `file_url text`, `reply_to uuid references chat_messages(id)`, `is_read boolean default false`, `created_at timestamptz`
+- New table `chat_reactions`:
+  - `id uuid pk`, `message_id uuid references chat_messages(id)`, `user_id uuid references profiles(id)`, `emoji text`, `created_at timestamptz`
+- RLS: "Authenticated users can read and insert messages"
+- Supabase Realtime & Presence: Enable for instant updates, typing indicators, and online status.
+
+**UI:**
+- Scrollable message area with automatic scroll to bottom.
+- Message bubbles (Left for others, Right for self).
+- Image attachment button using Storage.
+- **Typing Indicator:** "Someone is typing..." notification using Presence.
+- **Online Status:** Green dot for active users.
+- **Replies:** Swipe or click to reply to a specific message.
+- **Reactions:** Long press or hover to add emojis to a message.
+
 ### 3. Favorites tab
 
 **Database changes:**
@@ -71,6 +90,8 @@ Dashboard-il ee sections ellam chErkkam. Tab-based layout aakum so dashboard cle
 - `src/components/dashboard/MessagesTab.tsx`
 - `src/components/dashboard/FavoritesTab.tsx`
 - `src/components/dashboard/SettingsTab.tsx`
+- `src/components/dashboard/ChatTab.tsx`
+- `src/components/dashboard/ChatBubble.tsx`
 - `src/server/account.functions.ts` — `deleteAccount` server function (service role)
 - `src/integrations/supabase/types.ts` — auto-regenerated after migration
 - `src/routes/contact.tsx` — set `user_id` if logged in
@@ -116,6 +137,37 @@ create policy "Users update own avatar" on storage.objects
 create policy "Users delete own avatar" on storage.objects
   for delete to authenticated 
   using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Chat table with reply support
+create table chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references profiles(id) not null,
+  content text,
+  file_url text,
+  reply_to uuid references chat_messages(id) on delete set null,
+  is_read boolean default false,
+  created_at timestamptz default now()
+);
+alter table chat_messages enable row level security;
+create policy "Anyone authenticated can read chat" on chat_messages for select to authenticated using (true);
+create policy "Anyone authenticated can post to chat" on chat_messages for insert to authenticated with check (auth.uid() = user_id);
+
+-- Chat Reactions table
+create table chat_reactions (
+  id uuid primary key default gen_random_uuid(),
+  message_id uuid references chat_messages(id) on delete cascade not null,
+  user_id uuid references profiles(id) on delete cascade not null,
+  emoji text not null,
+  created_at timestamptz default now(),
+  unique(message_id, user_id, emoji)
+);
+alter table chat_reactions enable row level security;
+create policy "Anyone authenticated can view reactions" on chat_reactions for select to authenticated using (true);
+create policy "Anyone authenticated can react" on chat_reactions for insert to authenticated with check (auth.uid() = user_id);
+create policy "Users can remove own reactions" on chat_reactions for delete to authenticated using (auth.uid() = user_id);
+
+-- Enable Realtime
+alter publication supabase_realtime add table chat_messages, chat_reactions;
 ```
 
 ### Summary

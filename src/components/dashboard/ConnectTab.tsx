@@ -127,40 +127,28 @@ export function ConnectTab() {
 
   const loadData = async () => {
     if (!user) return;
-    const [{ data: profiles }, { data: pres }, { data: msgs }, { data: grps }] = await Promise.all([
-      supabase.from("profiles").select("id, display_name, avatar_url").neq("id", user.id),
-      supabase.from("user_presence").select("user_id, is_online, last_seen_at"),
-      supabase
-        .from("direct_messages")
-        .select("*")
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("chat_groups")
-          .select(`*, group_members!inner(*)`)
-          .eq("group_members.user_id", user.id)
-    ]);
+    {  ;
 
-    setUsers(profiles ?? []);
-    const pmap: Record<string, Presence> = {};
-    (pres ?? []).forEach((p) => (pmap[p.user_id] = p as Presence));
-    setPresence(pmap);
-    
-    if (grps) {
-      setGroups(grps as unknown as ChatGroup[]);
+      if (grpErr) {
+        console.error("Error loading groups:", grpErr);
+      }
+
+      setUsers(profiles ?? []);
+      const pmap: Record<string, Presence> = {};
+      (pres ?? []).forEach((p) => (pmap[p.user_id] = p as Presence));
+      setPresence(pmap);
+      
+      if (grps) {
+        setGroups(grps as unknown as ChatGroup[]);
+      }
+
+      const last: Record<string, DM> = {};
+        });ad(un);
+      setLoading(false);
+    } catch (err) {
+      console.error("Critical load data error:", err);
+      setLoading(false);
     }
-
-    const last: Record<string, DM> = {};
-    const un: Record<string, number> = {};
-    (msgs ?? []).forEach((m) => {
-      const peer = m.sender_id === user.id ? m.recipient_id : m.sender_id;
-      if (!last[peer]) last[peer] = m as DM;
-      if (m.recipient_id === user.id && !m.read_at) un[peer] = (un[peer] ?? 0) + 1;
-    });
-    setLastMessages(last);
-    setUnread(un);
-    setLoading(false);
   };
 
   // Load users + presence + summaries
@@ -180,19 +168,8 @@ export function ConnectTab() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "user_presence" },
-        (payload) => {
-          const row = payload.new as Presence;
-          if (row?.user_id) setPresence((p) => ({ ...p, [row.user_id]: row }));
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "direct_messages" },
-        (payload) => {
-          const m = payload.new as DM;
-          if (m.sender_id !== user.id && m.recipient_id !== user.id) return;
-          const peer = m.sender_id === user.id ? m.recipient_id : m.sender_id;
-          setLastMessages((prev) => ({ ...prev, [peer]: m }));
+        (p   eTlo
+     ges((prev) => ({ ...prev, [peer]: m }));
           if (m.recipient_id === user.id && (!activePeer || activePeer.id !== m.sender_id)) {
             setUnread((u) => ({ ...u, [peer]: (u[peer] ?? 0) + 1 }));
           }
