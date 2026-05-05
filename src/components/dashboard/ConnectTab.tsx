@@ -44,7 +44,22 @@ import { usePresenceHeartbeat } from "@/lib/usePresence";
 import { CallManager, CallState, CallType } from "@/lib/callManager";
 import { CallUI } from "@/components/CallUI";
 import { cn } from "@/lib/utils";
-import { NewGroupModal } from "./NewGroupModal"; // Import NewGroupModal
+import { NewGroupModal } from "./NewGroupModal";
+import { StatusBar } from "./StatusBar";
+import {
+  loadChatSettings,
+  upsertChatSetting,
+  loadReactions,
+  toggleReaction as dbToggleReaction,
+  loadStars,
+  toggleStar as dbToggleStar,
+  expiresAtFromSeconds,
+  WALLPAPERS,
+  DISAPPEARING_OPTIONS,
+  type ChatSetting,
+  type Reaction,
+} from "@/lib/chatFeatures";
+import { Archive, BellOff, Palette, VolumeX } from "lucide-react";
 
 interface Profile {
   id: string;
