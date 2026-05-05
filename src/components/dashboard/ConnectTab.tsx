@@ -186,6 +186,11 @@ export function ConnectTab() {
 
       await reloadSettings();
       setLoading(false);
+    } catch (err) {
+      console.error("Critical load data error:", err);
+      setLoading(false);
+    }
+  };
 
   // Load users + presence + summaries
   useEffect(() => {
