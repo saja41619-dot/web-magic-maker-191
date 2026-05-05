@@ -1016,13 +1016,14 @@ function ChatWindow({
     if (!content && !overrides?.attachment_url) return;
     setSending(true);
     try {
-      const payload = {
+      const payload: any = {
         sender_id: user.id,
         recipient_id: peer.id,
         content: overrides?.attachment_url ? overrides?.content ?? null : content || null,
         attachment_url: overrides?.attachment_url ?? null,
         attachment_type: overrides?.attachment_type ?? null,
         attachment_name: overrides?.attachment_name ?? null,
+        expires_at: expiresAtFromSeconds(chatSetting?.disappearing_seconds ?? null),
       };
       const { data, error } = await supabase
         .from("direct_messages")
