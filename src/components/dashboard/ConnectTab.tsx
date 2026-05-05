@@ -1131,6 +1131,13 @@ function ChatWindow({
             <ImageCardIcon className="h-5 w-5" />
           </button>
           <button
+            onClick={() => setShowWallpapers((v) => !v)}
+            className="rounded-lg p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Wallpaper"
+          >
+            <Palette className="h-5 w-5" />
+          </button>
+          <button
             onClick={() => setShowInfo(!showInfo)}
             className="rounded-lg p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Info"
@@ -1139,6 +1146,41 @@ function ChatWindow({
           </button>
         </div>
       </div>
+
+      {showWallpapers && (
+        <div className="border-b border-border bg-background/50 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold">Wallpaper</p>
+            <button onClick={() => setShowWallpapers(false)}><X className="h-4 w-4" /></button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto">
+            {WALLPAPERS.map((w) => (
+              <button
+                key={w.label}
+                onClick={() => setWallpaper(w.value)}
+                className={cn(
+                  "h-12 w-12 shrink-0 rounded-lg border-2",
+                  chatSetting?.wallpaper === w.value ? "border-primary" : "border-transparent",
+                )}
+                style={w.value ? { background: w.value } : { background: "#0b141a" }}
+                title={w.label}
+              />
+            ))}
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <p className="text-xs font-semibold inline-flex items-center gap-1"><Timer className="h-3 w-3" /> Disappearing</p>
+            <select
+              value={String(chatSetting?.disappearing_seconds ?? "")}
+              onChange={(e) => setDisappearing(e.target.value ? Number(e.target.value) : null)}
+              className="text-xs bg-card border border-border rounded-md px-2 py-1"
+            >
+              {DISAPPEARING_OPTIONS.map((o) => (
+                <option key={o.label} value={o.value ?? ""}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Info Panel */}
       {showInfo && (
