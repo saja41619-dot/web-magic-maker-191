@@ -142,19 +142,19 @@ function DashboardContent() {
 
   return (
     <div className={cn(
-      "min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-24 lg:pb-0",
-      isConnectTab && "lg:h-screen lg:overflow-hidden"
+      "bg-gradient-to-br from-background via-background to-primary/5",
+      "h-screen overflow-hidden flex flex-col"
     )}>
       <div className={cn(
-        "mx-auto flex gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
-        isConnectTab ? "max-w-none w-full h-full p-0 gap-0" : "max-w-7xl"
+        "flex w-full flex-1 min-h-0 pb-[72px] lg:pb-0",
+        isConnectTab ? "gap-0 p-0" : "gap-0"
       )}>
         {/* Desktop sidebar */}
         <aside className={cn(
-          "hidden lg:flex lg:w-64 lg:flex-col lg:shrink-0",
-          isConnectTab && "border-r border-border bg-card p-4 h-full"
+          "hidden lg:flex lg:w-64 lg:flex-col lg:shrink-0 lg:h-full lg:overflow-y-auto",
+          isConnectTab ? "border-r border-border bg-card p-4" : "py-6 pl-4 lg:pl-8"
         )}>
-          <div className={cn("sticky top-6 space-y-4", isConnectTab && "top-0")}>
+          <div className={cn("space-y-4", !isConnectTab && "pr-2")}>
             <Link
               to="/"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-smooth hover:text-foreground"
@@ -225,11 +225,11 @@ function DashboardContent() {
 
         {/* Main content */}
         <main className={cn(
-          "min-w-0 flex-1",
-          isConnectTab && "h-full flex flex-col"
+          "min-w-0 flex-1 flex flex-col",
+          isConnectTab ? "h-full" : "h-full overflow-y-auto"
         )}>
           {/* Mobile / tablet header */}
-          <div className={cn("lg:hidden", isConnectTab && "p-4 border-b border-border bg-card mb-0")}>
+          <div className={cn("lg:hidden", isConnectTab ? "p-4 border-b border-border bg-card mb-0 shrink-0" : "px-4 pt-6 sm:px-6")}>
             <Link
               to="/"
               className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -276,7 +276,7 @@ function DashboardContent() {
           </div>
 
           {/* Active panel */}
-          <div className={cn("mt-6", isConnectTab && "mt-0 h-full flex-1 overflow-hidden")}>
+          <div className={cn(isConnectTab ? "h-full flex-1 overflow-hidden" : "flex-1 px-4 sm:px-6 lg:px-8 py-6")}>
             {!isConnectTab && (
               <div className="mb-4 hidden items-center justify-between lg:flex">
                 <h1 className="font-display text-2xl font-bold capitalize">
