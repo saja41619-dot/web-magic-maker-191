@@ -591,10 +591,8 @@ function ChatWindow({
   const [peerTyping, setPeerTyping] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [messageSearch, setMessageSearch] = useState("");
-  const [reactions, setReactions] = useState<Record<string, string[]>>({});
-  const [showMediaGallery, setShowMediaGallery] = useState(false);
-  const [pinnedMessages, setPinnedMessages] = useState<Record<string, boolean>>({});
-  const [starredMessages, setStarredMessages] = useState<Record<string, boolean>>({});
+  // Local UI state for legacy info panel pinned summary
+  const [pinnedMessages] = useState<Record<string, boolean>>({});
   const [replyingTo, setReplyingTo] = useState<DM | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
