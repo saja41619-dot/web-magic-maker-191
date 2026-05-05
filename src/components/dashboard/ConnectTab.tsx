@@ -141,6 +141,28 @@ export function ConnectTab() {
   const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
   const [loading, setLoading] = useState(true);
 
+  const [chatSettings, setChatSettings] = useState<Record<string, ChatSetting>>({});
+  const [showArchived, setShowArchived] = useState(false);
+
+  const settingFor = (kind: "dm" | "group", key: string) =>
+    chatSettings[`${kind}:${key}`];
+
+  const reloadSettings = async () => {
+    if (!user) return;
+    const map = await loadChatSettings(user.id);
+    setChatSettings(map);
+  };
+
+  const updateSetting = async (
+    kind: "dm" | "group",
+    key: string,
+    patch: Partial<Omit<ChatSetting, "chat_kind" | "chat_key">>,
+  ) => {
+    if (!user) return;
+    await upsertChatSetting(user.id, kind, key, patch);
+    await reloadSettings();
+  };
+
   const loadData = async () => {
     if (!user) return;
     setLoading(true);
