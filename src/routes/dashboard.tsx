@@ -276,7 +276,7 @@ function DashboardContent() {
           </div>
 
           {/* Active panel */}
-          <div className={cn("mt-6", isConnectTab && "mt-0 h-full flex-1 overflow-hidden")}>
+          <div className={cn(isConnectTab ? "h-full flex-1 overflow-hidden" : "flex-1 px-4 sm:px-6 lg:px-8 py-6")}>
             {!isConnectTab && (
               <div className="mb-4 hidden items-center justify-between lg:flex">
                 <h1 className="font-display text-2xl font-bold capitalize">
