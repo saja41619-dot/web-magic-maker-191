@@ -325,68 +325,105 @@ export function ConnectTab() {
             </button>
 
           </div>
+
+          <StatusBar users={users} />
+
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            <h3 className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Recent Chats
-            </h3>
+            <div className="flex items-center justify-between px-3 py-2">
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                {showArchived ? "Archived" : "Recent Chats"}
+              </h3>
+              <button
+                onClick={() => setShowArchived((v) => !v)}
+                className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+              >
+                <Archive className="h-3 w-3" />
+                {showArchived ? "All" : "Archived"}
+              </button>
+            </div>
             {loading ? (
               <div className="flex justify-center p-6">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : sidebarItems.length === 0 ? (
               <p className="p-4 text-center text-xs text-muted-foreground">
-                No users found.
+                {showArchived ? "No archived chats." : "No chats yet."}
               </p>
             ) : (
               sidebarItems.map((item) => {
-                if (item.type === 'direct') {
+                const setting = item.setting;
+                const isPinned = setting?.pinned ?? false;
+                const isMuted = setting?.muted_until && new Date(setting.muted_until) > new Date();
+                const kind = item.type === "direct" ? "dm" : "group";
+                const key = item.data.id;
+
+                if (item.type === "direct") {
                   const p = item.data;
                   const last = lastMessages[p.id];
                   const isOnline = presence[p.id]?.is_online;
-                  const count = unread[p.id] ?? 0;
                   const initial = (p.display_name ?? "U").charAt(0).toUpperCase();
                   return (
-                    <button
+                    <ChatRow
                       key={p.id}
-                      onClick={() => openPeer(p)}
-                      className={cn(
-                        "group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200",
-                        activePeer?.id === p.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/50",
-                      )}
-                    >
-                      <div className="relative">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-base font-bold text-primary-foreground">
-                          {p.avatar_url ? <img src={p.avatar_url} alt="" className="h-full w-full object-cover" /> : initial}
+                      onOpen={() => openPeer(p)}
+                      active={activePeer?.id === p.id}
+                      isPinned={isPinned}
+                      isMuted={!!isMuted}
+                      isArchived={!!setting?.archived}
+                      onTogglePin={() => updateSetting(kind, key, { pinned: !isPinned })}
+                      onToggleArchive={() => updateSetting(kind, key, { archived: !setting?.archived })}
+                      onToggleMute={() =>
+                        updateSetting(kind, key, {
+                          muted_until: isMuted ? null : new Date(Date.now() + 8 * 3600_000).toISOString(),
+                        })
+                      }
+                      avatar={
+                        <div className="relative">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-base font-bold text-primary-foreground">
+                            {p.avatar_url ? (
+                              <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              initial
+                            )}
+                          </div>
+                          {isOnline && (
+                            <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500 animate-pulse" />
+                          )}
                         </div>
-                        {isOnline && <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500 ring-1 ring-green-500/50 animate-pulse" />}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-semibold">{p.display_name || "User"}</p>
-                          {last && <span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(last.created_at)}</span>}
-                        </div>
-                      </div>
-                    </button>
+                      }
+                      title={p.display_name || "User"}
+                      subtitle={last?.content || (last ? "(Attachment)" : "Tap to chat")}
+                      time={last ? formatTime(last.created_at) : ""}
+                      unread={unread[p.id] ?? 0}
+                    />
                   );
                 } else {
                   const g = item.data;
                   return (
-                    <button
+                    <ChatRow
                       key={g.id}
-                      onClick={() => openGroup(g)}
-                      className={cn(
-                        "group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200",
-                        activeGroup?.id === g.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/50",
-                      )}
-                    >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary">
-                        <Users className="h-6 w-6" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold">{g.name}</p>
-                        <p className="text-[10px] text-muted-foreground">Group</p>
-                      </div>
-                    </button>
+                      onOpen={() => openGroup(g)}
+                      active={activeGroup?.id === g.id}
+                      isPinned={isPinned}
+                      isMuted={!!isMuted}
+                      isArchived={!!setting?.archived}
+                      onTogglePin={() => updateSetting(kind, key, { pinned: !isPinned })}
+                      onToggleArchive={() => updateSetting(kind, key, { archived: !setting?.archived })}
+                      onToggleMute={() =>
+                        updateSetting(kind, key, {
+                          muted_until: isMuted ? null : new Date(Date.now() + 8 * 3600_000).toISOString(),
+                        })
+                      }
+                      avatar={
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary">
+                          <Users className="h-6 w-6" />
+                        </div>
+                      }
+                      title={g.name}
+                      subtitle="Group chat"
+                      time=""
+                      unread={0}
+                    />
                   );
                 }
               })
