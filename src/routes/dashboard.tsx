@@ -142,12 +142,12 @@ function DashboardContent() {
 
   return (
     <div className={cn(
-      "min-h-screen bg-gradient-to-br from-background via-background to-primary/5 pb-24 lg:pb-0",
-      isConnectTab && "lg:h-screen lg:overflow-hidden"
+      "bg-gradient-to-br from-background via-background to-primary/5 pb-24 lg:pb-0",
+      "h-screen lg:overflow-hidden"
     )}>
       <div className={cn(
-        "mx-auto flex gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8",
-        isConnectTab ? "max-w-none w-full h-full p-0 gap-0" : "max-w-7xl"
+        "flex w-full h-full",
+        isConnectTab ? "gap-0 p-0" : "gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
       )}>
         {/* Desktop sidebar */}
         <aside className={cn(
