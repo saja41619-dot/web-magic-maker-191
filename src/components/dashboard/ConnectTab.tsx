@@ -809,39 +809,93 @@ function ChatWindow({
     });
   };
 
-  const deleteMessage = async (msgId: string) => {
+  const [chatSetting, setChatSetting] = useState<ChatSetting | null>(null);
+  const [reactionsByMsg, setReactionsByMsg] = useState<Record<string, Reaction[]>>({});
+  const [starredSet, setStarredSet] = useState<Set<string>>(new Set());
+  const [pinnedSet, setPinnedSet] = useState<Set<string>>(new Set());
+  const [showWallpapers, setShowWallpapers] = useState(false);
+
+  // Load settings + reactions + stars when peer/messages change
+  useEffect(() => {
+    if (!user) return;
+    void (async () => {
+      const map = await loadChatSettings(user.id);
+      setChatSetting(map[`dm:${peer.id}`] ?? null);
+      const stars = await loadStars(user.id);
+      setStarredSet(stars);
+    })();
+  }, [user, peer.id]);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    void (async () => {
+      const map = await loadReactions(messages.map((m) => m.id));
+      setReactionsByMsg(map);
+    })();
+    const ch = supabase
+      .channel(`reactions-${peer.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "message_reactions" },
+        async () => {
+          const map = await loadReactions(messages.map((m) => m.id));
+          setReactionsByMsg(map);
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(ch);
+    };
+  }, [messages.length, peer.id]);
+
+  const deleteMessage = async (msgId: string, forEveryone = false) => {
     try {
-      await supabase.from("direct_messages").delete().eq("id", msgId);
-      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      if (forEveryone) {
+        await supabase
+          .from("direct_messages")
+          .update({ deleted_for_all: true, content: null, attachment_url: null } as any)
+          .eq("id", msgId);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId ? { ...m, content: null, attachment_url: null, deleted_for_all: true } as any : m,
+          ),
+        );
+      } else {
+        await supabase.from("direct_messages").delete().eq("id", msgId);
+        setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      }
     } catch (err) {
       console.error("Delete error:", err);
+      toast.error("Couldn't delete");
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+    toast.success("Copied");
   };
 
-  const addReaction = (messageId: string, emoji: string) => {
-    setReactions((prev) => ({
-      ...prev,
-      [messageId]: [...(prev[messageId] ?? []), emoji],
-    }));
+  const addReaction = async (messageId: string, emoji: string) => {
+    if (!user) return;
+    const existing = reactionsByMsg[messageId];
+    await dbToggleReaction(messageId, "dm", user.id, emoji, existing);
   };
 
   const editMessage = async (msgId: string) => {
     if (!editingText.trim()) return;
+    const orig = messages.find((m) => m.id === msgId);
+    if (!orig) return;
+    if (Date.now() - new Date(orig.created_at).getTime() > 15 * 60_000) {
+      toast.error("Can only edit within 15 minutes");
+      return;
+    }
     try {
       await supabase
         .from("direct_messages")
         .update({ content: editingText, edited_at: new Date().toISOString() })
         .eq("id", msgId);
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === msgId
-            ? { ...m, content: editingText, edited_at: new Date().toISOString() }
-            : m
-        )
+        prev.map((m) => (m.id === msgId ? { ...m, content: editingText, edited_at: new Date().toISOString() } : m)),
       );
       setEditingId(null);
       setEditingText("");
@@ -851,44 +905,62 @@ function ChatWindow({
   };
 
   const togglePin = (msgId: string) => {
-    setPinnedMessages((prev) => ({
-      ...prev,
-      [msgId]: !prev[msgId],
-    }));
+    setPinnedSet((prev) => {
+      const next = new Set(prev);
+      next.has(msgId) ? next.delete(msgId) : next.add(msgId);
+      return next;
+    });
   };
 
-  const toggleStar = (msgId: string) => {
-    setStarredMessages((prev) => ({
-      ...prev,
-      [msgId]: !prev[msgId],
-    }));
+  const toggleStar = async (msgId: string) => {
+    if (!user) return;
+    const isStarred = starredSet.has(msgId);
+    await dbToggleStar(user.id, msgId, "dm", isStarred);
+    setStarredSet((prev) => {
+      const next = new Set(prev);
+      isStarred ? next.delete(msgId) : next.add(msgId);
+      return next;
+    });
   };
 
-  // This function is now responsible for initiating the forward flow
+  const setWallpaper = async (wp: string | null) => {
+    if (!user) return;
+    await upsertChatSetting(user.id, "dm", peer.id, { wallpaper: wp });
+    setChatSetting((s) => ({ ...(s ?? ({} as any)), wallpaper: wp } as ChatSetting));
+    setShowWallpapers(false);
+  };
+
+  const setDisappearing = async (sec: number | null) => {
+    if (!user) return;
+    await upsertChatSetting(user.id, "dm", peer.id, { disappearing_seconds: sec });
+    setChatSetting((s) => ({ ...(s ?? ({} as any)), disappearing_seconds: sec } as ChatSetting));
+    toast.success(sec ? "Disappearing on" : "Disappearing off");
+  };
+
+  // Forward
   const initiateForward = (msgId: string) => {
     const message = messages.find((m) => m.id === msgId);
     if (!message) return;
     setForwardingMessage(message);
   };
 
-  // This function sends the actual forwarded message to a selected recipient
   const sendForwardedMessage = async (targetRecipient: Profile) => {
     if (!user || !forwardingMessage) return;
     setSending(true);
     try {
-      const forwardContent = `[Forwarded]\n${forwardingMessage.content || "(Attachment)"}`;
       await supabase.from("direct_messages").insert({
         sender_id: user.id,
         recipient_id: targetRecipient.id,
-        content: forwardContent,
+        content: forwardingMessage.content,
         attachment_url: forwardingMessage.attachment_url,
         attachment_type: forwardingMessage.attachment_type,
         attachment_name: forwardingMessage.attachment_name,
-      });
-      toast.success(`Message forwarded to ${targetRecipient.display_name || "User"}`);
+        forwarded: true,
+      } as any);
+      toast.success(`Forwarded to ${targetRecipient.display_name || "User"}`);
     } finally {
       setSending(false);
-      setForwardingMessage(null); // Close modal after sending
+      setForwardingMessage(null);
     }
   };
 
