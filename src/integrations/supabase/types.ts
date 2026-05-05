@@ -75,10 +75,14 @@ export type Database = {
           attachment_url: string | null
           content: string | null
           created_at: string
+          deleted_for_all: boolean
           edited_at: string | null
+          expires_at: string | null
+          forwarded: boolean
           id: string
           read_at: string | null
           recipient_id: string
+          reply_to_id: string | null
           sender_id: string
         }
         Insert: {
@@ -87,10 +91,14 @@ export type Database = {
           attachment_url?: string | null
           content?: string | null
           created_at?: string
+          deleted_for_all?: boolean
           edited_at?: string | null
+          expires_at?: string | null
+          forwarded?: boolean
           id?: string
           read_at?: string | null
           recipient_id: string
+          reply_to_id?: string | null
           sender_id: string
         }
         Update: {
@@ -99,10 +107,14 @@ export type Database = {
           attachment_url?: string | null
           content?: string | null
           created_at?: string
+          deleted_for_all?: boolean
           edited_at?: string | null
+          expires_at?: string | null
+          forwarded?: boolean
           id?: string
           read_at?: string | null
           recipient_id?: string
+          reply_to_id?: string | null
           sender_id?: string
         }
         Relationships: []
@@ -185,6 +197,10 @@ export type Database = {
           attachment_url: string | null
           content: string | null
           created_at: string
+          deleted_for_all: boolean
+          edited_at: string | null
+          expires_at: string | null
+          forwarded: boolean
           group_id: string
           id: string
           reply_to_id: string | null
@@ -196,6 +212,10 @@ export type Database = {
           attachment_url?: string | null
           content?: string | null
           created_at?: string
+          deleted_for_all?: boolean
+          edited_at?: string | null
+          expires_at?: string | null
+          forwarded?: boolean
           group_id: string
           id?: string
           reply_to_id?: string | null
@@ -207,6 +227,10 @@ export type Database = {
           attachment_url?: string | null
           content?: string | null
           created_at?: string
+          deleted_for_all?: boolean
+          edited_at?: string | null
+          expires_at?: string | null
+          forwarded?: boolean
           group_id?: string
           id?: string
           reply_to_id?: string | null
@@ -228,6 +252,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      message_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          message_id: string
+          message_kind: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          message_id: string
+          message_kind: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          message_id?: string
+          message_kind?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -364,6 +415,123 @@ export type Database = {
         }
         Relationships: []
       }
+      starred_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message_id: string
+          message_kind: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message_id: string
+          message_kind: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message_id?: string
+          message_kind?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      status_posts: {
+        Row: {
+          background: string | null
+          content: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          media_type: string | null
+          media_url: string | null
+          user_id: string
+        }
+        Insert: {
+          background?: string | null
+          content?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          user_id: string
+        }
+        Update: {
+          background?: string | null
+          content?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      status_views: {
+        Row: {
+          id: string
+          status_id: string
+          viewed_at: string
+          viewer_id: string
+        }
+        Insert: {
+          id?: string
+          status_id: string
+          viewed_at?: string
+          viewer_id: string
+        }
+        Update: {
+          id?: string
+          status_id?: string
+          viewed_at?: string
+          viewer_id?: string
+        }
+        Relationships: []
+      }
+      user_chat_settings: {
+        Row: {
+          archived: boolean
+          chat_key: string
+          chat_kind: string
+          disappearing_seconds: number | null
+          id: string
+          muted_until: string | null
+          pinned: boolean
+          updated_at: string
+          user_id: string
+          wallpaper: string | null
+        }
+        Insert: {
+          archived?: boolean
+          chat_key: string
+          chat_kind: string
+          disappearing_seconds?: number | null
+          id?: string
+          muted_until?: string | null
+          pinned?: boolean
+          updated_at?: string
+          user_id: string
+          wallpaper?: string | null
+        }
+        Update: {
+          archived?: boolean
+          chat_key?: string
+          chat_kind?: string
+          disappearing_seconds?: number | null
+          id?: string
+          muted_until?: string | null
+          pinned?: boolean
+          updated_at?: string
+          user_id?: string
+          wallpaper?: string | null
+        }
+        Relationships: []
+      }
       user_favorites: {
         Row: {
           created_at: string
@@ -440,6 +608,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_messages: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

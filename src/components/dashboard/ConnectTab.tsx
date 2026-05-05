@@ -44,7 +44,22 @@ import { usePresenceHeartbeat } from "@/lib/usePresence";
 import { CallManager, CallState, CallType } from "@/lib/callManager";
 import { CallUI } from "@/components/CallUI";
 import { cn } from "@/lib/utils";
-import { NewGroupModal } from "./NewGroupModal"; // Import NewGroupModal
+import { NewGroupModal } from "./NewGroupModal";
+import { StatusBar } from "./StatusBar";
+import {
+  loadChatSettings,
+  upsertChatSetting,
+  loadReactions,
+  toggleReaction as dbToggleReaction,
+  loadStars,
+  toggleStar as dbToggleStar,
+  expiresAtFromSeconds,
+  WALLPAPERS,
+  DISAPPEARING_OPTIONS,
+  type ChatSetting,
+  type Reaction,
+} from "@/lib/chatFeatures";
+import { Archive, BellOff, Palette, VolumeX } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -126,6 +141,28 @@ export function ConnectTab() {
   const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
   const [loading, setLoading] = useState(true);
 
+  const [chatSettings, setChatSettings] = useState<Record<string, ChatSetting>>({});
+  const [showArchived, setShowArchived] = useState(false);
+
+  const settingFor = (kind: "dm" | "group", key: string) =>
+    chatSettings[`${kind}:${key}`];
+
+  const reloadSettings = async () => {
+    if (!user) return;
+    const map = await loadChatSettings(user.id);
+    setChatSettings(map);
+  };
+
+  const updateSetting = async (
+    kind: "dm" | "group",
+    key: string,
+    patch: Partial<Omit<ChatSetting, "chat_kind" | "chat_key">>,
+  ) => {
+    if (!user) return;
+    await upsertChatSetting(user.id, kind, key, patch);
+    await reloadSettings();
+  };
+
   const loadData = async () => {
     if (!user) return;
     setLoading(true);
@@ -147,6 +184,7 @@ export function ConnectTab() {
         setGroups(grps as unknown as ChatGroup[]);
       }
 
+      await reloadSettings();
       setLoading(false);
     } catch (err) {
       console.error("Critical load data error:", err);
@@ -196,16 +234,38 @@ export function ConnectTab() {
 
   const sidebarItems = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const combined = [
-      ...users.map(u => ({ type: 'direct' as const, data: u })),
-      ...groups.map(g => ({ type: 'group' as const, data: g }))
+    type Item =
+      | { type: "direct"; data: Profile; setting?: ChatSetting; ts: string }
+      | { type: "group"; data: ChatGroup; setting?: ChatSetting; ts: string };
+    const combined: Item[] = [
+      ...users.map((u) => ({
+        type: "direct" as const,
+        data: u,
+        setting: settingFor("dm", u.id),
+        ts: lastMessages[u.id]?.created_at ?? "",
+      })),
+      ...groups.map((g) => ({
+        type: "group" as const,
+        data: g,
+        setting: settingFor("group", g.id),
+        ts: g.created_at,
+      })),
     ];
-    
-    if (!q) return combined;
-    return combined.filter(item => 
-      (item.type === 'direct' ? item.data.display_name : item.data.name)?.toLowerCase().includes(q)
-    );
-  }, [users, groups, search]);
+    const visible = combined.filter((item) => {
+      const isArch = item.setting?.archived ?? false;
+      if (showArchived !== isArch) return false;
+      if (!q) return true;
+      const name = item.type === "direct" ? item.data.display_name : item.data.name;
+      return (name ?? "").toLowerCase().includes(q);
+    });
+    visible.sort((a, b) => {
+      const ap = a.setting?.pinned ? 1 : 0;
+      const bp = b.setting?.pinned ? 1 : 0;
+      if (ap !== bp) return bp - ap;
+      return b.ts.localeCompare(a.ts);
+    });
+    return visible;
+  }, [users, groups, search, chatSettings, lastMessages, showArchived]);
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -265,68 +325,105 @@ export function ConnectTab() {
             </button>
 
           </div>
+
+          <StatusBar users={users} />
+
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            <h3 className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-              Recent Chats
-            </h3>
+            <div className="flex items-center justify-between px-3 py-2">
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                {showArchived ? "Archived" : "Recent Chats"}
+              </h3>
+              <button
+                onClick={() => setShowArchived((v) => !v)}
+                className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+              >
+                <Archive className="h-3 w-3" />
+                {showArchived ? "All" : "Archived"}
+              </button>
+            </div>
             {loading ? (
               <div className="flex justify-center p-6">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : sidebarItems.length === 0 ? (
               <p className="p-4 text-center text-xs text-muted-foreground">
-                No users found.
+                {showArchived ? "No archived chats." : "No chats yet."}
               </p>
             ) : (
               sidebarItems.map((item) => {
-                if (item.type === 'direct') {
+                const setting = item.setting;
+                const isPinned = setting?.pinned ?? false;
+                const isMuted = setting?.muted_until && new Date(setting.muted_until) > new Date();
+                const kind = item.type === "direct" ? "dm" : "group";
+                const key = item.data.id;
+
+                if (item.type === "direct") {
                   const p = item.data;
                   const last = lastMessages[p.id];
                   const isOnline = presence[p.id]?.is_online;
-                  const count = unread[p.id] ?? 0;
                   const initial = (p.display_name ?? "U").charAt(0).toUpperCase();
                   return (
-                    <button
+                    <ChatRow
                       key={p.id}
-                      onClick={() => openPeer(p)}
-                      className={cn(
-                        "group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200",
-                        activePeer?.id === p.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/50",
-                      )}
-                    >
-                      <div className="relative">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-base font-bold text-primary-foreground">
-                          {p.avatar_url ? <img src={p.avatar_url} alt="" className="h-full w-full object-cover" /> : initial}
+                      onOpen={() => openPeer(p)}
+                      active={activePeer?.id === p.id}
+                      isPinned={isPinned}
+                      isMuted={!!isMuted}
+                      isArchived={!!setting?.archived}
+                      onTogglePin={() => updateSetting(kind, key, { pinned: !isPinned })}
+                      onToggleArchive={() => updateSetting(kind, key, { archived: !setting?.archived })}
+                      onToggleMute={() =>
+                        updateSetting(kind, key, {
+                          muted_until: isMuted ? null : new Date(Date.now() + 8 * 3600_000).toISOString(),
+                        })
+                      }
+                      avatar={
+                        <div className="relative">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-base font-bold text-primary-foreground">
+                            {p.avatar_url ? (
+                              <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              initial
+                            )}
+                          </div>
+                          {isOnline && (
+                            <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500 animate-pulse" />
+                          )}
                         </div>
-                        {isOnline && <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full border-2 border-background bg-green-500 ring-1 ring-green-500/50 animate-pulse" />}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-semibold">{p.display_name || "User"}</p>
-                          {last && <span className="shrink-0 text-[10px] text-muted-foreground">{formatTime(last.created_at)}</span>}
-                        </div>
-                      </div>
-                    </button>
+                      }
+                      title={p.display_name || "User"}
+                      subtitle={last?.content || (last ? "(Attachment)" : "Tap to chat")}
+                      time={last ? formatTime(last.created_at) : ""}
+                      unread={unread[p.id] ?? 0}
+                    />
                   );
                 } else {
                   const g = item.data;
                   return (
-                    <button
+                    <ChatRow
                       key={g.id}
-                      onClick={() => openGroup(g)}
-                      className={cn(
-                        "group flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200",
-                        activeGroup?.id === g.id ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/50",
-                      )}
-                    >
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary">
-                        <Users className="h-6 w-6" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold">{g.name}</p>
-                        <p className="text-[10px] text-muted-foreground">Group</p>
-                      </div>
-                    </button>
+                      onOpen={() => openGroup(g)}
+                      active={activeGroup?.id === g.id}
+                      isPinned={isPinned}
+                      isMuted={!!isMuted}
+                      isArchived={!!setting?.archived}
+                      onTogglePin={() => updateSetting(kind, key, { pinned: !isPinned })}
+                      onToggleArchive={() => updateSetting(kind, key, { archived: !setting?.archived })}
+                      onToggleMute={() =>
+                        updateSetting(kind, key, {
+                          muted_until: isMuted ? null : new Date(Date.now() + 8 * 3600_000).toISOString(),
+                        })
+                      }
+                      avatar={
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary">
+                          <Users className="h-6 w-6" />
+                        </div>
+                      }
+                      title={g.name}
+                      subtitle="Group chat"
+                      time=""
+                      unread={0}
+                    />
                   );
                 }
               })
@@ -378,6 +475,103 @@ export function ConnectTab() {
   );
 }
 
+function ChatRow({
+  onOpen,
+  active,
+  avatar,
+  title,
+  subtitle,
+  time,
+  unread,
+  isPinned,
+  isMuted,
+  isArchived,
+  onTogglePin,
+  onToggleArchive,
+  onToggleMute,
+}: {
+  onOpen: () => void;
+  active: boolean;
+  avatar: React.ReactNode;
+  title: string;
+  subtitle: string;
+  time: string;
+  unread: number;
+  isPinned: boolean;
+  isMuted: boolean;
+  isArchived: boolean;
+  onTogglePin: () => void;
+  onToggleArchive: () => void;
+  onToggleMute: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  return (
+    <div
+      className={cn(
+        "group relative flex w-full items-center gap-3 rounded-xl p-3 cursor-pointer transition-all",
+        active ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/50",
+      )}
+      onClick={onOpen}
+    >
+      {avatar}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-sm font-semibold flex items-center gap-1">
+            {title}
+            {isMuted && <BellOff className="h-3 w-3 text-muted-foreground" />}
+          </p>
+          <span className="shrink-0 text-[10px] text-muted-foreground">{time}</span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+          <div className="flex items-center gap-1">
+            {isPinned && <Pin className="h-3 w-3 text-primary" />}
+            {unread > 0 && (
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                {unread}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setMenuOpen((v) => !v);
+        }}
+        className="opacity-0 group-hover:opacity-100 rounded-md p-1 hover:bg-secondary"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {menuOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-2 top-12 z-20 w-44 rounded-xl border border-border bg-card shadow-elegant py-1 text-sm"
+        >
+          <button
+            onClick={() => { onTogglePin(); setMenuOpen(false); }}
+            className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
+          >
+            <Pin className="h-4 w-4" /> {isPinned ? "Unpin" : "Pin"}
+          </button>
+          <button
+            onClick={() => { onToggleMute(); setMenuOpen(false); }}
+            className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
+          >
+            <BellOff className="h-4 w-4" /> {isMuted ? "Unmute" : "Mute 8h"}
+          </button>
+          <button
+            onClick={() => { onToggleArchive(); setMenuOpen(false); }}
+            className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
+          >
+            <Archive className="h-4 w-4" /> {isArchived ? "Unarchive" : "Archive"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChatWindow({
   peer,
   presence,
@@ -397,10 +591,8 @@ function ChatWindow({
   const [peerTyping, setPeerTyping] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [messageSearch, setMessageSearch] = useState("");
-  const [reactions, setReactions] = useState<Record<string, string[]>>({});
   const [showMediaGallery, setShowMediaGallery] = useState(false);
-  const [pinnedMessages, setPinnedMessages] = useState<Record<string, boolean>>({});
-  const [starredMessages, setStarredMessages] = useState<Record<string, boolean>>({});
+  const [pinnedMessages] = useState<Record<string, boolean>>({});
   const [replyingTo, setReplyingTo] = useState<DM | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -615,39 +807,93 @@ function ChatWindow({
     });
   };
 
-  const deleteMessage = async (msgId: string) => {
+  const [chatSetting, setChatSetting] = useState<ChatSetting | null>(null);
+  const [reactionsByMsg, setReactionsByMsg] = useState<Record<string, Reaction[]>>({});
+  const [starredSet, setStarredSet] = useState<Set<string>>(new Set());
+  const [pinnedSet, setPinnedSet] = useState<Set<string>>(new Set());
+  const [showWallpapers, setShowWallpapers] = useState(false);
+
+  // Load settings + reactions + stars when peer/messages change
+  useEffect(() => {
+    if (!user) return;
+    void (async () => {
+      const map = await loadChatSettings(user.id);
+      setChatSetting(map[`dm:${peer.id}`] ?? null);
+      const stars = await loadStars(user.id);
+      setStarredSet(stars);
+    })();
+  }, [user, peer.id]);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    void (async () => {
+      const map = await loadReactions(messages.map((m) => m.id));
+      setReactionsByMsg(map);
+    })();
+    const ch = supabase
+      .channel(`reactions-${peer.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "message_reactions" },
+        async () => {
+          const map = await loadReactions(messages.map((m) => m.id));
+          setReactionsByMsg(map);
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(ch);
+    };
+  }, [messages.length, peer.id]);
+
+  const deleteMessage = async (msgId: string, forEveryone = false) => {
     try {
-      await supabase.from("direct_messages").delete().eq("id", msgId);
-      setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      if (forEveryone) {
+        await supabase
+          .from("direct_messages")
+          .update({ deleted_for_all: true, content: null, attachment_url: null } as any)
+          .eq("id", msgId);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === msgId ? { ...m, content: null, attachment_url: null, deleted_for_all: true } as any : m,
+          ),
+        );
+      } else {
+        await supabase.from("direct_messages").delete().eq("id", msgId);
+        setMessages((prev) => prev.filter((m) => m.id !== msgId));
+      }
     } catch (err) {
       console.error("Delete error:", err);
+      toast.error("Couldn't delete");
     }
   };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+    toast.success("Copied");
   };
 
-  const addReaction = (messageId: string, emoji: string) => {
-    setReactions((prev) => ({
-      ...prev,
-      [messageId]: [...(prev[messageId] ?? []), emoji],
-    }));
+  const addReaction = async (messageId: string, emoji: string) => {
+    if (!user) return;
+    const existing = reactionsByMsg[messageId];
+    await dbToggleReaction(messageId, "dm", user.id, emoji, existing);
   };
 
   const editMessage = async (msgId: string) => {
     if (!editingText.trim()) return;
+    const orig = messages.find((m) => m.id === msgId);
+    if (!orig) return;
+    if (Date.now() - new Date(orig.created_at).getTime() > 15 * 60_000) {
+      toast.error("Can only edit within 15 minutes");
+      return;
+    }
     try {
       await supabase
         .from("direct_messages")
         .update({ content: editingText, edited_at: new Date().toISOString() })
         .eq("id", msgId);
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === msgId
-            ? { ...m, content: editingText, edited_at: new Date().toISOString() }
-            : m
-        )
+        prev.map((m) => (m.id === msgId ? { ...m, content: editingText, edited_at: new Date().toISOString() } : m)),
       );
       setEditingId(null);
       setEditingText("");
@@ -657,44 +903,62 @@ function ChatWindow({
   };
 
   const togglePin = (msgId: string) => {
-    setPinnedMessages((prev) => ({
-      ...prev,
-      [msgId]: !prev[msgId],
-    }));
+    setPinnedSet((prev) => {
+      const next = new Set(prev);
+      next.has(msgId) ? next.delete(msgId) : next.add(msgId);
+      return next;
+    });
   };
 
-  const toggleStar = (msgId: string) => {
-    setStarredMessages((prev) => ({
-      ...prev,
-      [msgId]: !prev[msgId],
-    }));
+  const toggleStar = async (msgId: string) => {
+    if (!user) return;
+    const isStarred = starredSet.has(msgId);
+    await dbToggleStar(user.id, msgId, "dm", isStarred);
+    setStarredSet((prev) => {
+      const next = new Set(prev);
+      isStarred ? next.delete(msgId) : next.add(msgId);
+      return next;
+    });
   };
 
-  // This function is now responsible for initiating the forward flow
+  const setWallpaper = async (wp: string | null) => {
+    if (!user) return;
+    await upsertChatSetting(user.id, "dm", peer.id, { wallpaper: wp });
+    setChatSetting((s) => ({ ...(s ?? ({} as any)), wallpaper: wp } as ChatSetting));
+    setShowWallpapers(false);
+  };
+
+  const setDisappearing = async (sec: number | null) => {
+    if (!user) return;
+    await upsertChatSetting(user.id, "dm", peer.id, { disappearing_seconds: sec });
+    setChatSetting((s) => ({ ...(s ?? ({} as any)), disappearing_seconds: sec } as ChatSetting));
+    toast.success(sec ? "Disappearing on" : "Disappearing off");
+  };
+
+  // Forward
   const initiateForward = (msgId: string) => {
     const message = messages.find((m) => m.id === msgId);
     if (!message) return;
     setForwardingMessage(message);
   };
 
-  // This function sends the actual forwarded message to a selected recipient
   const sendForwardedMessage = async (targetRecipient: Profile) => {
     if (!user || !forwardingMessage) return;
     setSending(true);
     try {
-      const forwardContent = `[Forwarded]\n${forwardingMessage.content || "(Attachment)"}`;
       await supabase.from("direct_messages").insert({
         sender_id: user.id,
         recipient_id: targetRecipient.id,
-        content: forwardContent,
+        content: forwardingMessage.content,
         attachment_url: forwardingMessage.attachment_url,
         attachment_type: forwardingMessage.attachment_type,
         attachment_name: forwardingMessage.attachment_name,
-      });
-      toast.success(`Message forwarded to ${targetRecipient.display_name || "User"}`);
+        forwarded: true,
+      } as any);
+      toast.success(`Forwarded to ${targetRecipient.display_name || "User"}`);
     } finally {
       setSending(false);
-      setForwardingMessage(null); // Close modal after sending
+      setForwardingMessage(null);
     }
   };
 
@@ -750,13 +1014,14 @@ function ChatWindow({
     if (!content && !overrides?.attachment_url) return;
     setSending(true);
     try {
-      const payload = {
+      const payload: any = {
         sender_id: user.id,
         recipient_id: peer.id,
         content: overrides?.attachment_url ? overrides?.content ?? null : content || null,
         attachment_url: overrides?.attachment_url ?? null,
         attachment_type: overrides?.attachment_type ?? null,
         attachment_name: overrides?.attachment_name ?? null,
+        expires_at: expiresAtFromSeconds(chatSetting?.disappearing_seconds ?? null),
       };
       const { data, error } = await supabase
         .from("direct_messages")
@@ -866,6 +1131,13 @@ function ChatWindow({
             <ImageCardIcon className="h-5 w-5" />
           </button>
           <button
+            onClick={() => setShowWallpapers((v) => !v)}
+            className="rounded-lg p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Wallpaper"
+          >
+            <Palette className="h-5 w-5" />
+          </button>
+          <button
             onClick={() => setShowInfo(!showInfo)}
             className="rounded-lg p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Info"
@@ -874,6 +1146,41 @@ function ChatWindow({
           </button>
         </div>
       </div>
+
+      {showWallpapers && (
+        <div className="border-b border-border bg-background/50 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold">Wallpaper</p>
+            <button onClick={() => setShowWallpapers(false)}><X className="h-4 w-4" /></button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto">
+            {WALLPAPERS.map((w) => (
+              <button
+                key={w.label}
+                onClick={() => setWallpaper(w.value)}
+                className={cn(
+                  "h-12 w-12 shrink-0 rounded-lg border-2",
+                  chatSetting?.wallpaper === w.value ? "border-primary" : "border-transparent",
+                )}
+                style={w.value ? { background: w.value } : { background: "#0b141a" }}
+                title={w.label}
+              />
+            ))}
+          </div>
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <p className="text-xs font-semibold inline-flex items-center gap-1"><Timer className="h-3 w-3" /> Disappearing</p>
+            <select
+              value={String(chatSetting?.disappearing_seconds ?? "")}
+              onChange={(e) => setDisappearing(e.target.value ? Number(e.target.value) : null)}
+              className="text-xs bg-card border border-border rounded-md px-2 py-1"
+            >
+              {DISAPPEARING_OPTIONS.map((o) => (
+                <option key={o.label} value={o.value ?? ""}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Info Panel */}
       {showInfo && (
@@ -988,11 +1295,15 @@ function ChatWindow({
       <div
         ref={scrollRef}
         className="flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border relative"
-        style={{
-          backgroundColor: "#0b141a",
-          backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
-          backgroundBlendMode: "overlay",
-        }}
+        style={
+          chatSetting?.wallpaper
+            ? { background: chatSetting.wallpaper }
+            : {
+                backgroundColor: "#0b141a",
+                backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
+                backgroundBlendMode: "overlay",
+              }
+        }
       >
         {filteredMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
@@ -1022,21 +1333,21 @@ function ChatWindow({
                   <MessageItem
                     message={m}
                     mine={mine}
-                    onDelete={() => deleteMessage(m.id)}
+                    onDelete={() => deleteMessage(m.id, mine)}
                     onCopy={() => copyToClipboard(m.content || "")}
                     onReact={(emoji) => addReaction(m.id, emoji)}
-                    reactions={reactions[m.id] ?? []}
+                    reactions={(reactionsByMsg[m.id] ?? []).map((r) => r.emoji)}
                     onPin={() => togglePin(m.id)}
                     onStar={() => toggleStar(m.id)}
-                    onForward={() => initiateForward(m.id)} // Changed to initiateForward
+                    onForward={() => initiateForward(m.id)}
                     onReply={() => setReplyingTo(m)}
                     onEdit={() => {
                       setEditingId(m.id);
                       setEditingText(m.content || "");
                     }}
                     onReport={() => reportMessage(m.id)}
-                    isPinned={pinnedMessages[m.id] ?? false}
-                    isStarred={starredMessages[m.id] ?? false}
+                    isPinned={pinnedSet.has(m.id)}
+                    isStarred={starredSet.has(m.id)}
                   />
                 </div>
               );
