@@ -151,10 +151,10 @@ function DashboardContent() {
       )}>
         {/* Desktop sidebar */}
         <aside className={cn(
-          "hidden lg:flex lg:w-64 lg:flex-col lg:shrink-0",
-          isConnectTab && "border-r border-border bg-card p-4 h-full"
+          "hidden lg:flex lg:w-64 lg:flex-col lg:shrink-0 lg:h-full lg:overflow-y-auto",
+          isConnectTab ? "border-r border-border bg-card p-4" : "py-6 pl-4 lg:pl-8"
         )}>
-          <div className={cn("sticky top-6 space-y-4", isConnectTab && "top-0")}>
+          <div className={cn("space-y-4", !isConnectTab && "pr-2")}>
             <Link
               to="/"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-smooth hover:text-foreground"
