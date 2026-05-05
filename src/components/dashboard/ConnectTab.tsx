@@ -234,16 +234,38 @@ export function ConnectTab() {
 
   const sidebarItems = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const combined = [
-      ...users.map(u => ({ type: 'direct' as const, data: u })),
-      ...groups.map(g => ({ type: 'group' as const, data: g }))
+    type Item =
+      | { type: "direct"; data: Profile; setting?: ChatSetting; ts: string }
+      | { type: "group"; data: ChatGroup; setting?: ChatSetting; ts: string };
+    const combined: Item[] = [
+      ...users.map((u) => ({
+        type: "direct" as const,
+        data: u,
+        setting: settingFor("dm", u.id),
+        ts: lastMessages[u.id]?.created_at ?? "",
+      })),
+      ...groups.map((g) => ({
+        type: "group" as const,
+        data: g,
+        setting: settingFor("group", g.id),
+        ts: g.created_at,
+      })),
     ];
-    
-    if (!q) return combined;
-    return combined.filter(item => 
-      (item.type === 'direct' ? item.data.display_name : item.data.name)?.toLowerCase().includes(q)
-    );
-  }, [users, groups, search]);
+    const visible = combined.filter((item) => {
+      const isArch = item.setting?.archived ?? false;
+      if (showArchived !== isArch) return false;
+      if (!q) return true;
+      const name = item.type === "direct" ? item.data.display_name : item.data.name;
+      return (name ?? "").toLowerCase().includes(q);
+    });
+    visible.sort((a, b) => {
+      const ap = a.setting?.pinned ? 1 : 0;
+      const bp = b.setting?.pinned ? 1 : 0;
+      if (ap !== bp) return bp - ap;
+      return b.ts.localeCompare(a.ts);
+    });
+    return visible;
+  }, [users, groups, search, chatSettings, lastMessages, showArchived]);
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
