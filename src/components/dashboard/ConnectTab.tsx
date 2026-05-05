@@ -475,6 +475,103 @@ export function ConnectTab() {
   );
 }
 
+function ChatRow({
+  onOpen,
+  active,
+  avatar,
+  title,
+  subtitle,
+  time,
+  unread,
+  isPinned,
+  isMuted,
+  isArchived,
+  onTogglePin,
+  onToggleArchive,
+  onToggleMute,
+}: {
+  onOpen: () => void;
+  active: boolean;
+  avatar: React.ReactNode;
+  title: string;
+  subtitle: string;
+  time: string;
+  unread: number;
+  isPinned: boolean;
+  isMuted: boolean;
+  isArchived: boolean;
+  onTogglePin: () => void;
+  onToggleArchive: () => void;
+  onToggleMute: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  return (
+    <div
+      className={cn(
+        "group relative flex w-full items-center gap-3 rounded-xl p-3 cursor-pointer transition-all",
+        active ? "bg-primary/10 ring-1 ring-primary/20" : "hover:bg-secondary/50",
+      )}
+      onClick={onOpen}
+    >
+      {avatar}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-sm font-semibold flex items-center gap-1">
+            {title}
+            {isMuted && <BellOff className="h-3 w-3 text-muted-foreground" />}
+          </p>
+          <span className="shrink-0 text-[10px] text-muted-foreground">{time}</span>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+          <div className="flex items-center gap-1">
+            {isPinned && <Pin className="h-3 w-3 text-primary" />}
+            {unread > 0 && (
+              <span className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                {unread}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setMenuOpen((v) => !v);
+        }}
+        className="opacity-0 group-hover:opacity-100 rounded-md p-1 hover:bg-secondary"
+      >
+        <MoreVertical className="h-4 w-4" />
+      </button>
+      {menuOpen && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-2 top-12 z-20 w-44 rounded-xl border border-border bg-card shadow-elegant py-1 text-sm"
+        >
+          <button
+            onClick={() => { onTogglePin(); setMenuOpen(false); }}
+            className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
+          >
+            <Pin className="h-4 w-4" /> {isPinned ? "Unpin" : "Pin"}
+          </button>
+          <button
+            onClick={() => { onToggleMute(); setMenuOpen(false); }}
+            className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
+          >
+            <BellOff className="h-4 w-4" /> {isMuted ? "Unmute" : "Mute 8h"}
+          </button>
+          <button
+            onClick={() => { onToggleArchive(); setMenuOpen(false); }}
+            className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
+          >
+            <Archive className="h-4 w-4" /> {isArchived ? "Unarchive" : "Archive"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ChatWindow({
   peer,
   presence,
