@@ -1293,21 +1293,21 @@ function ChatWindow({
                   <MessageItem
                     message={m}
                     mine={mine}
-                    onDelete={() => deleteMessage(m.id)}
+                    onDelete={() => deleteMessage(m.id, mine)}
                     onCopy={() => copyToClipboard(m.content || "")}
                     onReact={(emoji) => addReaction(m.id, emoji)}
-                    reactions={reactions[m.id] ?? []}
+                    reactions={(reactionsByMsg[m.id] ?? []).map((r) => r.emoji)}
                     onPin={() => togglePin(m.id)}
                     onStar={() => toggleStar(m.id)}
-                    onForward={() => initiateForward(m.id)} // Changed to initiateForward
+                    onForward={() => initiateForward(m.id)}
                     onReply={() => setReplyingTo(m)}
                     onEdit={() => {
                       setEditingId(m.id);
                       setEditingText(m.content || "");
                     }}
                     onReport={() => reportMessage(m.id)}
-                    isPinned={pinnedMessages[m.id] ?? false}
-                    isStarred={starredMessages[m.id] ?? false}
+                    isPinned={pinnedSet.has(m.id)}
+                    isStarred={starredSet.has(m.id)}
                   />
                 </div>
               );
