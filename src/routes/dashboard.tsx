@@ -146,8 +146,8 @@ function DashboardContent() {
       "h-screen overflow-hidden flex flex-col"
     )}>
       <div className={cn(
-        "flex w-full h-full",
-        isConnectTab ? "gap-0 p-0" : "gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+        "flex w-full flex-1 min-h-0 pb-[72px] lg:pb-0",
+        isConnectTab ? "gap-0 p-0" : "gap-0"
       )}>
         {/* Desktop sidebar */}
         <aside className={cn(
