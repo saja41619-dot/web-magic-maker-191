@@ -142,8 +142,8 @@ function DashboardContent() {
 
   return (
     <div className={cn(
-      "bg-gradient-to-br from-background via-background to-primary/5 pb-24 lg:pb-0",
-      "h-screen lg:overflow-hidden"
+      "bg-gradient-to-br from-background via-background to-primary/5",
+      "h-screen overflow-hidden flex flex-col"
     )}>
       <div className={cn(
         "flex w-full h-full",
