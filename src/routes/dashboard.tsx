@@ -225,11 +225,11 @@ function DashboardContent() {
 
         {/* Main content */}
         <main className={cn(
-          "min-w-0 flex-1",
-          isConnectTab && "h-full flex flex-col"
+          "min-w-0 flex-1 flex flex-col",
+          isConnectTab ? "h-full" : "h-full overflow-y-auto"
         )}>
           {/* Mobile / tablet header */}
-          <div className={cn("lg:hidden", isConnectTab && "p-4 border-b border-border bg-card mb-0")}>
+          <div className={cn("lg:hidden", isConnectTab ? "p-4 border-b border-border bg-card mb-0 shrink-0" : "px-4 pt-6 sm:px-6")}>
             <Link
               to="/"
               className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
