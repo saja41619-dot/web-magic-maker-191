@@ -184,12 +184,8 @@ export function ConnectTab() {
         setGroups(grps as unknown as ChatGroup[]);
       }
 
+      await reloadSettings();
       setLoading(false);
-    } catch (err) {
-      console.error("Critical load data error:", err);
-      setLoading(false);
-    }
-  };
 
   // Load users + presence + summaries
   useEffect(() => {
