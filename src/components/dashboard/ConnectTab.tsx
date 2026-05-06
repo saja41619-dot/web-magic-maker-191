@@ -442,7 +442,7 @@ export function ConnectTab() {
         </aside>
 
         {/* Chat window */}
-        <div className={cn("flex flex-col", !activePeer && "hidden md:flex")}>
+        <div className={cn("flex flex-col min-w-0", !(activePeer || activeGroup) && "hidden md:flex")}>
           {activePeer ? (
             <ChatWindow
               key={activePeer.id}
@@ -459,13 +459,28 @@ export function ConnectTab() {
               allUsers={users}
             />
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-muted/5">
-              <div className="mb-4 rounded-3xl bg-gradient-primary p-6 text-primary-foreground shadow-glow opacity-20">
-                <MessageSquare className="h-10 w-10" />
+            <div
+              className="flex flex-1 flex-col items-center justify-center p-8 text-center"
+              style={{
+                background:
+                  "linear-gradient(180deg, #f0f2f5 0%, #f0f2f5 65%, #25d366 65%, #25d366 66%, #f0f2f5 66%)",
+              }}
+            >
+              <div
+                className="mb-6 flex h-44 w-44 items-center justify-center rounded-full"
+                style={{ background: "#dbeae5" }}
+              >
+                <MessageSquare className="h-20 w-20" style={{ color: "var(--wa-teal)" }} />
               </div>
-              <h3 className="font-display text-xl font-bold">Connect with others</h3>
-              <p className="mt-2 max-w-[240px] text-sm text-muted-foreground leading-relaxed">
-                Select a user to start chatting.
+              <h3 className="text-2xl font-light" style={{ color: "var(--wa-text)" }}>
+                Lovable Web
+              </h3>
+              <p className="mt-3 max-w-sm text-sm" style={{ color: "var(--wa-text-muted)" }}>
+                Send and receive messages, share files, make voice & video calls,
+                create polls, share location and more — all from your dashboard.
+              </p>
+              <p className="mt-6 inline-flex items-center gap-2 text-xs" style={{ color: "var(--wa-text-muted)" }}>
+                <span>🔒</span> End-to-end encryption is not enabled in this demo.
               </p>
             </div>
           )}
