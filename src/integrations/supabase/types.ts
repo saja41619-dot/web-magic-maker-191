@@ -14,8 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      broadcast_list_members: {
+        Row: {
+          created_at: string
+          id: string
+          list_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          list_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          list_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_list_members_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "broadcast_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcast_lists: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
+      calls: {
+        Row: {
+          callee_id: string | null
+          caller_id: string
+          created_at: string
+          ended_at: string | null
+          group_id: string | null
+          id: string
+          kind: string
+          media: string
+          room_id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          callee_id?: string | null
+          caller_id: string
+          created_at?: string
+          ended_at?: string | null
+          group_id?: string | null
+          id?: string
+          kind: string
+          media: string
+          room_id: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          callee_id?: string | null
+          caller_id?: string
+          created_at?: string
+          ended_at?: string | null
+          group_id?: string | null
+          id?: string
+          kind?: string
+          media?: string
+          room_id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       chat_groups: {
         Row: {
+          community_id: string | null
           created_at: string
           created_by: string
           id: string
@@ -23,6 +116,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          community_id?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -30,13 +124,78 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          community_id?: string | null
           created_at?: string
           created_by?: string
           id?: string
           name?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "chat_groups_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      communities: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
         Relationships: []
+      }
+      community_members: {
+        Row: {
+          community_id: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          community_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          community_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_members_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contact_messages: {
         Row: {
@@ -80,6 +239,7 @@ export type Database = {
           expires_at: string | null
           forwarded: boolean
           id: string
+          poll_id: string | null
           read_at: string | null
           recipient_id: string
           reply_to_id: string | null
@@ -96,6 +256,7 @@ export type Database = {
           expires_at?: string | null
           forwarded?: boolean
           id?: string
+          poll_id?: string | null
           read_at?: string | null
           recipient_id: string
           reply_to_id?: string | null
@@ -112,12 +273,21 @@ export type Database = {
           expires_at?: string | null
           forwarded?: boolean
           id?: string
+          poll_id?: string | null
           read_at?: string | null
           recipient_id?: string
           reply_to_id?: string | null
           sender_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       group_members: {
         Row: {
@@ -203,6 +373,7 @@ export type Database = {
           forwarded: boolean
           group_id: string
           id: string
+          poll_id: string | null
           reply_to_id: string | null
           sender_id: string
         }
@@ -218,6 +389,7 @@ export type Database = {
           forwarded?: boolean
           group_id: string
           id?: string
+          poll_id?: string | null
           reply_to_id?: string | null
           sender_id: string
         }
@@ -233,6 +405,7 @@ export type Database = {
           forwarded?: boolean
           group_id?: string
           id?: string
+          poll_id?: string | null
           reply_to_id?: string | null
           sender_id?: string
         }
@@ -242,6 +415,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "chat_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_messages_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
             referencedColumns: ["id"]
           },
           {
@@ -277,6 +457,101 @@ export type Database = {
           message_id?: string
           message_kind?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      poll_options: {
+        Row: {
+          id: string
+          label: string
+          poll_id: string
+          position: number
+        }
+        Insert: {
+          id?: string
+          label: string
+          poll_id: string
+          position?: number
+        }
+        Update: {
+          id?: string
+          label?: string
+          poll_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_id?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      polls: {
+        Row: {
+          closed: boolean
+          created_at: string
+          created_by: string
+          id: string
+          multiple_choice: boolean
+          question: string
+        }
+        Insert: {
+          closed?: boolean
+          created_at?: string
+          created_by: string
+          id?: string
+          multiple_choice?: boolean
+          question: string
+        }
+        Update: {
+          closed?: boolean
+          created_at?: string
+          created_by?: string
+          id?: string
+          multiple_choice?: boolean
+          question?: string
         }
         Relationships: []
       }
@@ -614,6 +889,18 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_broadcast_owner: {
+        Args: { _list_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_community_admin: {
+        Args: { _community_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_community_member: {
+        Args: { _community_id: string; _user_id: string }
         Returns: boolean
       }
       is_group_admin: {

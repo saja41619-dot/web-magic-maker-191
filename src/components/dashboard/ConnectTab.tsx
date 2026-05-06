@@ -293,37 +293,47 @@ export function ConnectTab() {
 
   return (
     <section className={cn(
-      "overflow-hidden border-border bg-card h-full",
+      "wa overflow-hidden border-border h-full",
       "rounded-none border-0 shadow-none md:rounded-2xl md:border md:shadow-elegant lg:rounded-none lg:border-0 lg:shadow-none"
-    )}>
-      <div className="grid h-full min-h-[500px] grid-cols-1 md:grid-cols-[320px_1fr]">
+    )} style={{ background: "var(--wa-panel)" }}>
+      <div className="grid h-full min-h-[500px] grid-cols-1 md:grid-cols-[340px_1fr]">
         {/* Sidebar list */}
         <aside
           className={cn(
-            "flex flex-col border-r border-border bg-background/30",
-            activePeer && "hidden md:flex",
+            "flex flex-col wa-bg-list border-r wa-divider",
+            (activePeer || activeGroup) && "hidden md:flex",
           )}
         >
-          <div className="border-b border-border p-3">
+          {/* WhatsApp-style header */}
+          <div className="wa-bg-header flex items-center justify-between px-4 py-3">
+            <h2 className="text-base font-semibold" style={{ color: "var(--wa-teal-dark)" }}>Chats</h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowNewGroupModal(true)}
+                className="wa-icon-btn"
+                title="New group"
+                aria-label="New group"
+              >
+                <Users className="h-5 w-5" />
+              </button>
+              <button className="wa-icon-btn" title="More" aria-label="More">
+                <MoreVertical className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="px-3 py-2 wa-bg-list border-b wa-divider">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--wa-text-muted)" }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search users…"
-                className="h-10 w-full rounded-xl border border-border bg-card pl-9 pr-3 text-sm outline-none focus:border-primary"
+                placeholder="Search or start new chat"
+                className="h-9 w-full rounded-lg pl-9 pr-3 text-sm outline-none"
+                style={{ background: "var(--wa-panel)", color: "var(--wa-text)" }}
               />
             </div>
-            <button
-              onClick={() => setShowNewGroupModal(true)}
-              className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200 hover:bg-secondary/50 mt-2"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Users className="h-6 w-6" />
-              </div>
-              <p className="truncate text-sm font-semibold">New Group</p>
-            </button>
-
           </div>
 
           <StatusBar users={users} />
@@ -432,7 +442,7 @@ export function ConnectTab() {
         </aside>
 
         {/* Chat window */}
-        <div className={cn("flex flex-col", !activePeer && "hidden md:flex")}>
+        <div className={cn("flex flex-col min-w-0", !(activePeer || activeGroup) && "hidden md:flex")}>
           {activePeer ? (
             <ChatWindow
               key={activePeer.id}
@@ -449,13 +459,28 @@ export function ConnectTab() {
               allUsers={users}
             />
           ) : (
-            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center bg-muted/5">
-              <div className="mb-4 rounded-3xl bg-gradient-primary p-6 text-primary-foreground shadow-glow opacity-20">
-                <MessageSquare className="h-10 w-10" />
+            <div
+              className="flex flex-1 flex-col items-center justify-center p-8 text-center"
+              style={{
+                background:
+                  "linear-gradient(180deg, #f0f2f5 0%, #f0f2f5 65%, #25d366 65%, #25d366 66%, #f0f2f5 66%)",
+              }}
+            >
+              <div
+                className="mb-6 flex h-44 w-44 items-center justify-center rounded-full"
+                style={{ background: "#dbeae5" }}
+              >
+                <MessageSquare className="h-20 w-20" style={{ color: "var(--wa-teal)" }} />
               </div>
-              <h3 className="font-display text-xl font-bold">Connect with others</h3>
-              <p className="mt-2 max-w-[240px] text-sm text-muted-foreground leading-relaxed">
-                Select a user to start chatting.
+              <h3 className="text-2xl font-light" style={{ color: "var(--wa-text)" }}>
+                Lovable Web
+              </h3>
+              <p className="mt-3 max-w-sm text-sm" style={{ color: "var(--wa-text-muted)" }}>
+                Send and receive messages, share files, make voice & video calls,
+                create polls, share location and more — all from your dashboard.
+              </p>
+              <p className="mt-6 inline-flex items-center gap-2 text-xs" style={{ color: "var(--wa-text-muted)" }}>
+                <span>🔒</span> End-to-end encryption is not enabled in this demo.
               </p>
             </div>
           )}
@@ -1294,16 +1319,8 @@ function ChatWindow({
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border relative"
-        style={
-          chatSetting?.wallpaper
-            ? { background: chatSetting.wallpaper }
-            : {
-                backgroundColor: "#0b141a",
-                backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
-                backgroundBlendMode: "overlay",
-              }
-        }
+        className="flex-1 space-y-3 overflow-y-auto p-4 relative wa-bg-chat"
+        style={chatSetting?.wallpaper ? { background: chatSetting.wallpaper } : undefined}
       >
         {filteredMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
@@ -1913,12 +1930,7 @@ function GroupChatWindow({
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3"
-        style={{
-          backgroundColor: "#0b141a",
-          backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
-          backgroundBlendMode: "overlay",
-        }}
+        className="flex-1 overflow-y-auto p-4 space-y-3 wa-bg-chat"
       >
         {messages.map((m) => {
           const mine = m.sender_id === user?.id;
@@ -1939,14 +1951,12 @@ function GroupChatWindow({
                 </span>
               )}
               <div className={cn(
-                "relative max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-elegant",
-                mine ? "rounded-tr-none bg-gradient-primary text-primary-foreground" : "rounded-tl-none bg-card border border-border text-foreground"
+                "wa-bubble wa-pop",
+                mine ? "wa-bubble-out" : "wa-bubble-in"
               )}>
                 {replied && (
-                  <div className={cn(
-                    "mb-1.5 rounded-lg p-2 border-l-4 text-xs",
-                    mine ? "bg-white/10 border-white/40" : "bg-secondary border-primary/40"
-                  )}>
+                  <div className="mb-1.5 rounded-md p-2 border-l-4 text-xs"
+                    style={{ background: "rgba(0,0,0,0.04)", borderColor: "var(--wa-teal)" }}>
                     <p className="font-bold opacity-80">{repliedSender?.display_name || "Unknown"}</p>
                     <p className="truncate opacity-70">
                       {replied.content || (replied.attachment_type === "image" ? "📷 Photo" : replied.attachment_type === "voice" ? "🎤 Voice" : "📎 File")}
@@ -1955,7 +1965,7 @@ function GroupChatWindow({
                 )}
                 {m.attachment_type === "image" && m.attachment_url && (
                   <a href={m.attachment_url} target="_blank" rel="noreferrer">
-                    <img src={m.attachment_url} alt={m.attachment_name ?? ""} className="mb-1 max-h-64 rounded-lg object-cover" />
+                    <img src={m.attachment_url} alt={m.attachment_name ?? ""} className="mb-1 max-h-64 rounded-md object-cover" />
                   </a>
                 )}
                 {m.attachment_type === "voice" && m.attachment_url && (
@@ -1963,24 +1973,24 @@ function GroupChatWindow({
                 )}
                 {m.attachment_type === "file" && m.attachment_url && (
                   <a href={m.attachment_url} target="_blank" rel="noreferrer"
-                    className={cn("mb-1 flex items-center gap-2 rounded-lg p-2 hover:underline", mine ? "bg-white/10" : "bg-secondary")}>
+                    className="mb-1 flex items-center gap-2 rounded-md p-2 hover:underline"
+                    style={{ background: "rgba(0,0,0,0.04)" }}>
                     <FileText className="h-4 w-4" />
                     <span className="truncate">{m.attachment_name ?? "File"}</span>
                   </a>
                 )}
                 {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
-                <div className={cn("mt-1 flex items-center justify-end gap-1 text-[10px]",
-                  mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                  <span>{formatTime(m.created_at)}</span>
+                <span className="wa-meta">
+                  {formatTime(m.created_at)}
                   {mine && (
                     <button onClick={() => setShowReceiptsFor(showReceiptsFor === m.id ? null : m.id)}
-                      className="hover:opacity-100 opacity-80" title="Read by">
-                      {allRead ? <CheckCheck className="h-3 w-3 text-blue-300" /> :
-                       someRead ? <CheckCheck className="h-3 w-3" /> :
-                       <Check className="h-3 w-3" />}
+                      className="ml-1 inline-flex" title="Read by">
+                      {allRead ? <CheckCheck className="h-3 w-3 wa-tick-read" /> :
+                       someRead ? <CheckCheck className="h-3 w-3 wa-tick" /> :
+                       <Check className="h-3 w-3 wa-tick" />}
                     </button>
                   )}
-                </div>
+                </span>
 
                 {/* Hover actions */}
                 <div className={cn(
@@ -2234,21 +2244,14 @@ function MessageItem({
         </span>
       )}
       <div className="relative group">
-        {/* Message Tail */}
-        <div className={cn(
-          "absolute top-0 h-4 w-4",
-          mine ? "-right-2 bg-gradient-to-br from-primary to-primary/80 [clip-path:polygon(0_0,0_100%,100%_0)]" : "-left-2 bg-card border-l border-t border-border [clip-path:polygon(100%_0,100%_100%,0_0)]"
-        )} />
         <div
           className={cn(
-            "relative z-10 max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-elegant transition-all",
-            mine
-              ? "rounded-tr-none bg-gradient-primary text-primary-foreground"
-              : "rounded-tl-none bg-card border border-border text-foreground backdrop-blur-sm",
+            "wa-bubble wa-pop",
+            mine ? "wa-bubble-out" : "wa-bubble-in",
           )}
         >
           {isPinned && (
-            <div className="flex items-center gap-1 mb-1 text-[10px] opacity-75">
+            <div className="flex items-center gap-1 mb-1 text-[10px] wa-text-muted">
               <Pin className="h-3 w-3" /> Pinned
             </div>
           )}
@@ -2257,7 +2260,7 @@ function MessageItem({
               <img
                 src={message.attachment_url}
                 alt={message.attachment_name ?? "image"}
-                className="mb-1 max-h-64 rounded-lg object-cover hover:opacity-90 transition-opacity"
+                className="mb-1 max-h-64 rounded-md object-cover hover:opacity-95 transition-opacity"
               />
             </a>
           )}
@@ -2269,10 +2272,8 @@ function MessageItem({
               href={message.attachment_url}
               target="_blank"
               rel="noreferrer"
-              className={cn(
-                "mb-1 flex items-center gap-2 rounded-lg p-2 underline-offset-2 hover:underline",
-                mine ? "bg-white/10" : "bg-secondary",
-              )}
+              className="mb-1 flex items-center gap-2 rounded-md p-2 underline-offset-2 hover:underline"
+              style={{ background: "rgba(0,0,0,0.04)" }}
             >
               <FileText className="h-4 w-4" />
               <span className="truncate">{message.attachment_name ?? "File"}</span>
@@ -2281,7 +2282,7 @@ function MessageItem({
           {message.content && (
             <div className="flex flex-col">
               {isForwarded && (
-                <div className={cn("flex items-center gap-1 opacity-50 mb-1", mine ? "text-primary-foreground" : "text-muted-foreground")}>
+                <div className="flex items-center gap-1 opacity-60 mb-1 wa-text-muted">
                   <Forward className="h-3 w-3" />
                   <span className="text-[10px] italic font-medium">Forwarded</span>
                 </div>
@@ -2289,21 +2290,16 @@ function MessageItem({
               <p className="whitespace-pre-wrap break-words">{displayContent}</p>
             </div>
           )}
-          <div
-            className={cn(
-              "mt-1 flex items-center justify-end gap-1 text-[10px]",
-              mine ? "text-primary-foreground/70" : "text-muted-foreground",
-            )}
-          >
-            <span>{formatTime(message.created_at)}</span>
-            {message.edited_at && <span className="text-[8px]">(edited)</span>}
+          <span className="wa-meta">
+            {message.edited_at && <span className="mr-1">edited</span>}
+            {formatTime(message.created_at)}
             {mine && message.read_at !== undefined &&
               (message.read_at ? (
-                <CheckCheck className="h-3 w-3" />
+                <CheckCheck className="h-3 w-3 wa-tick-read" />
               ) : (
-                <Check className="h-3 w-3" />
+                <CheckCheck className="h-3 w-3 wa-tick" />
               ))}
-          </div>
+          </span>
         </div>
 
         {/* Message Actions */}
