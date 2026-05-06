@@ -2246,21 +2246,14 @@ function MessageItem({
         </span>
       )}
       <div className="relative group">
-        {/* Message Tail */}
-        <div className={cn(
-          "absolute top-0 h-4 w-4",
-          mine ? "-right-2 bg-gradient-to-br from-primary to-primary/80 [clip-path:polygon(0_0,0_100%,100%_0)]" : "-left-2 bg-card border-l border-t border-border [clip-path:polygon(100%_0,100%_100%,0_0)]"
-        )} />
         <div
           className={cn(
-            "relative z-10 max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-elegant transition-all",
-            mine
-              ? "rounded-tr-none bg-gradient-primary text-primary-foreground"
-              : "rounded-tl-none bg-card border border-border text-foreground backdrop-blur-sm",
+            "wa-bubble wa-pop",
+            mine ? "wa-bubble-out" : "wa-bubble-in",
           )}
         >
           {isPinned && (
-            <div className="flex items-center gap-1 mb-1 text-[10px] opacity-75">
+            <div className="flex items-center gap-1 mb-1 text-[10px] wa-text-muted">
               <Pin className="h-3 w-3" /> Pinned
             </div>
           )}
@@ -2269,7 +2262,7 @@ function MessageItem({
               <img
                 src={message.attachment_url}
                 alt={message.attachment_name ?? "image"}
-                className="mb-1 max-h-64 rounded-lg object-cover hover:opacity-90 transition-opacity"
+                className="mb-1 max-h-64 rounded-md object-cover hover:opacity-95 transition-opacity"
               />
             </a>
           )}
@@ -2281,10 +2274,8 @@ function MessageItem({
               href={message.attachment_url}
               target="_blank"
               rel="noreferrer"
-              className={cn(
-                "mb-1 flex items-center gap-2 rounded-lg p-2 underline-offset-2 hover:underline",
-                mine ? "bg-white/10" : "bg-secondary",
-              )}
+              className="mb-1 flex items-center gap-2 rounded-md p-2 underline-offset-2 hover:underline"
+              style={{ background: "rgba(0,0,0,0.04)" }}
             >
               <FileText className="h-4 w-4" />
               <span className="truncate">{message.attachment_name ?? "File"}</span>
@@ -2293,7 +2284,7 @@ function MessageItem({
           {message.content && (
             <div className="flex flex-col">
               {isForwarded && (
-                <div className={cn("flex items-center gap-1 opacity-50 mb-1", mine ? "text-primary-foreground" : "text-muted-foreground")}>
+                <div className="flex items-center gap-1 opacity-60 mb-1 wa-text-muted">
                   <Forward className="h-3 w-3" />
                   <span className="text-[10px] italic font-medium">Forwarded</span>
                 </div>
@@ -2301,21 +2292,16 @@ function MessageItem({
               <p className="whitespace-pre-wrap break-words">{displayContent}</p>
             </div>
           )}
-          <div
-            className={cn(
-              "mt-1 flex items-center justify-end gap-1 text-[10px]",
-              mine ? "text-primary-foreground/70" : "text-muted-foreground",
-            )}
-          >
-            <span>{formatTime(message.created_at)}</span>
-            {message.edited_at && <span className="text-[8px]">(edited)</span>}
+          <span className="wa-meta">
+            {message.edited_at && <span className="mr-1">edited</span>}
+            {formatTime(message.created_at)}
             {mine && message.read_at !== undefined &&
               (message.read_at ? (
-                <CheckCheck className="h-3 w-3" />
+                <CheckCheck className="h-3 w-3 wa-tick-read" />
               ) : (
-                <Check className="h-3 w-3" />
+                <CheckCheck className="h-3 w-3 wa-tick" />
               ))}
-          </div>
+          </span>
         </div>
 
         {/* Message Actions */}
