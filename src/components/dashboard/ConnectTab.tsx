@@ -666,6 +666,7 @@ function ChatWindow({
   const [incomingOffer, setIncomingOffer] = useState<any>(null);
   const [isRinging, setIsRinging] = useState(false);
   const [forwardingMessage, setForwardingMessage] = useState<DM | null>(null);
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const [showDisappearingOptions, setShowDisappearingOptions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1813,6 +1814,32 @@ function GroupChatWindow({
   useEffect(() => {
     callStateRef.current = callState;
   }, [callState]);
+
+  // Ringtone & Dial tone management for ChatWindow
+  useEffect(() => {
+    const isOutgoing = callState === "calling";
+    const isIncoming = isRinging;
+
+    if (isOutgoing || isIncoming) {
+      const audioUrl = isIncoming
+        ? "https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3" // Incoming Ringtone
+        : "https://assets.mixkit.co/active_storage/sfx/1350/1350-preview.mp3"; // Outgoing Dial tone
+
+      if (ringtoneRef.current) ringtoneRef.current.pause();
+      ringtoneRef.current = new Audio(audioUrl);
+      ringtoneRef.current.loop = true;
+      ringtoneRef.current.play().catch((e) => console.log("Audio play blocked:", e));
+    } else {
+      if (ringtoneRef.current) {
+        ringtoneRef.current.pause();
+        ringtoneRef.current.currentTime = 0;
+        ringtoneRef.current = null;
+      }
+    }
+    return () => {
+      if (ringtoneRef.current) ringtoneRef.current.pause();
+    };
+  }, [isRinging, callState]);
 
   const [callType, setCallType] = useState<CallType>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
