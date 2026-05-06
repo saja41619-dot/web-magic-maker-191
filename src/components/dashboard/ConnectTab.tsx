@@ -624,6 +624,7 @@ function ChatWindow({
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockList, setBlockList] = useState<string[]>([]);
   const [voicePlaybackSpeed, setVoicePlaybackSpeed] = useState(1);
+  const [callingPeer, setCallingPeer] = useState<Profile | null>(null); // The peer currently in a 1:1 call from this group context
   const [incomingOffer, setIncomingOffer] = useState<any>(null);
   const [isRinging, setIsRinging] = useState(false);
   const [forwardingMessage, setForwardingMessage] = useState<DM | null>(null);
@@ -656,6 +657,7 @@ function ChatWindow({
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSent = useRef(0);
 
+  // Call State Management (for ChatWindow and GroupChatWindow)
   // Ringtone management
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
@@ -699,6 +701,25 @@ function ChatWindow({
       cancelled = true;
     };
   }, [user, peer.id]);
+
+  // Initialize CallManager only on client side
+  if (!callManagerRef.current && typeof window !== "undefined") {
+    callManagerRef.current = new CallManager();
+  }
+  const callTimerRef = useRef<number | null>(null);
+  const signalingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Call State Management
+  const [callState, setCallState] = useState<CallState>("idle");
+  const callStateRef = useRef<CallState>("idle");
+
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
+  const [callType, setCallType] = useState<CallType>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
 
   // Realtime messages + typing
   useEffect(() => {
@@ -751,6 +772,76 @@ function ChatWindow({
       void supabase.removeChannel(msgCh);
       void supabase.removeChannel(typingCh);
       typingChannelRef.current = null;
+    };
+  }, [user, peer.id]);
+
+  // Initialize CallManager listeners
+  useEffect(() => {
+    if (!callManagerRef.current) return;
+    const cm = callManagerRef.current!;
+    cm.onRemoteStream((stream) => setRemoteStream(stream));
+    cm.onStateChange((state) => {
+      setCallState(state);
+      if (state === "active") {
+        setCallDuration(0);
+        callTimerRef.current = window.setInterval(() => {
+          setCallDuration((d) => d + 1);
+        }, 1000);
+      } else if (state === "ended" || state === "idle") {
+        if (callTimerRef.current) clearInterval(callTimerRef.current);
+        setCallType(null);
+        setLocalStream(null);
+        setRemoteStream(null);
+        setCallDuration(0);
+      }
+    });
+
+    return () => {
+      if (callTimerRef.current) clearInterval(callTimerRef.current);
+      cm.endCall();
+    };
+  }, []);
+
+  // Call Signaling via Supabase Broadcast
+  useEffect(() => {
+    if (!user) return;
+    const topic = `call-signaling:${[user.id, peer.id].sort().join(':')}`;
+    const signalingCh = supabase.channel(topic, {
+      config: { broadcast: { self: false } },
+    });
+    signalingChannelRef.current = signalingCh;
+
+    signalingCh
+      .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
+        if (callStateRef.current !== "idle" && callStateRef.current !== "ended") return;
+        const { offer, callType: incomingType } = payload;
+        setCallType(incomingType);
+        setIncomingOffer(offer);
+        setIsRinging(true);
+      })
+      .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
+        const { answer } = payload;
+        await callManagerRef.current?.handleRemoteAnswer(answer);
+      })
+      .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
+        const { candidate } = payload;
+        if (candidate) {
+          await callManagerRef.current?.addIceCandidate(candidate);
+        }
+      })
+      .on("broadcast", { event: "call-decline" }, () => {
+        toast.error("Call declined");
+        setIsRinging(false);
+        setIncomingOffer(null);
+      })
+      .on("broadcast", { event: "call-end" }, () => {
+        callManagerRef.current?.endCall();
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(signalingCh);
+      signalingChannelRef.current = null;
     };
   }, [user, peer.id]);
 
@@ -1621,6 +1712,10 @@ function ChatWindow({
           <h2 className="text-2xl font-bold mb-1">{peer.display_name || "User"}</h2>
           <p className="text-muted-foreground animate-pulse mb-12 uppercase tracking-widest text-xs">Incoming {callType} call...</p>
           
+          {/* Swipe up to accept - Placeholder for visual effect, actual accept is via button */}
+          {/* You would typically use a gesture library for actual swipe detection */}
+          {/* For this example, the button directly triggers handleAcceptCall */}
+
           <div className="flex flex-col items-center gap-10 w-full max-w-xs">
             <button
               onClick={handleAcceptCall}
@@ -1748,6 +1843,24 @@ function GroupChatWindow({
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSent = useRef(0);
 
+  // Call State Management (for GroupChatWindow)
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null); // Moved outside useEffect
+
+  const [callState, setCallState] = useState<CallState>("idle");
+  const callStateRef = useRef<CallState>("idle");
+  useEffect(() => { callStateRef.current = callState; }, [callState]);
+
+  const [callType, setCallType] = useState<CallType>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
+  const callManagerRef = useRef<CallManager | null>(null);
+  if (!callManagerRef.current && typeof window !== "undefined") { callManagerRef.current = new CallManager(); }
+  const callTimerRef = useRef<number | null>(null);
+  const signalingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const [incomingOffer, setIncomingOffer] = useState<any>(null);
+  const [isRinging, setIsRinging] = useState(false);
+  const [callingPeer, setCallingPeer] = useState<Profile | null>(null); // The peer currently in a 1:1 call from this group context
   const isAdmin = useMemo(
     () => members.some((m) => m.user_id === user?.id && m.role === "admin"),
     [members, user]
@@ -1800,6 +1913,89 @@ function GroupChatWindow({
     })();
     return () => { cancelled = true; };
   }, [user, group.id]);
+
+  // Initialize CallManager listeners (for GroupChatWindow)
+  useEffect(() => {
+    if (!callManagerRef.current) return;
+    const cm = callManagerRef.current!;
+    cm.onRemoteStream((stream) => setRemoteStream(stream));
+    cm.onStateChange((state) => {
+      setCallState(state);
+      if (state === "active") {
+        setCallDuration(0);
+        callTimerRef.current = window.setInterval(() => {
+          setCallDuration((d) => d + 1);
+        }, 1000);
+      } else if (state === "ended" || state === "idle") {
+        if (callTimerRef.current) clearInterval(callTimerRef.current);
+        setCallType(null);
+        setLocalStream(null);
+        setRemoteStream(null);
+        setCallDuration(0);
+        setCallingPeer(null); // Reset calling peer when call ends
+      }
+    });
+
+    return () => {
+      if (callTimerRef.current) clearInterval(callTimerRef.current);
+      cm.endCall();
+    };
+  }, []);
+
+  // Call Signaling via Supabase Broadcast (for GroupChatWindow)
+  useEffect(() => {
+    if (!user || !callingPeer) {
+      if (signalingChannelRef.current) {
+        void supabase.removeChannel(signalingChannelRef.current);
+        signalingChannelRef.current = null;
+      }
+      return;
+    }
+
+    const topic = `call-signaling:${[user.id, callingPeer.id].sort().join(':')}`;
+    const signalingCh = supabase.channel(topic, {
+      config: { broadcast: { self: false } },
+    });
+    signalingChannelRef.current = signalingCh;
+
+    signalingCh
+      .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
+        if (callStateRef.current !== "idle" && callStateRef.current !== "ended") return;
+        const { offer, callType: incomingType, fromUserId } = payload;
+        const callerProfile = allUsers.find(u => u.id === fromUserId);
+        if (!callerProfile) { console.error("Caller profile not found for incoming call:", fromUserId); return; }
+        setCallingPeer(callerProfile);
+        setCallType(incomingType);
+        setIncomingOffer(offer);
+        setIsRinging(true);
+      })
+      .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
+        const { answer } = payload;
+        await callManagerRef.current?.handleRemoteAnswer(answer);
+      })
+      .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
+        const { candidate } = payload;
+        if (candidate) {
+          await callManagerRef.current?.addIceCandidate(candidate);
+        }
+      })
+      .on("broadcast", { event: "call-decline" }, () => {
+        toast.error("Call declined");
+        setIsRinging(false);
+        setIncomingOffer(null);
+        setCallingPeer(null);
+      })
+      .on("broadcast", { event: "call-end" }, () => {
+        callManagerRef.current?.endCall();
+        setCallingPeer(null);
+      })
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(signalingCh);
+      signalingChannelRef.current = null;
+    };
+  }, [user, callingPeer, allUsers]);
 
   // Realtime: messages, members, reads
   useEffect(() => {
@@ -1892,6 +2088,69 @@ function GroupChatWindow({
     });
   };
 
+  const startCall = async (type: "voice" | "video", targetPeer: Profile) => {
+    setCallingPeer(targetPeer); // This will trigger the signaling useEffect
+
+    // Small delay to allow signaling channel to be established
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    if (!signalingChannelRef.current) {
+        toast.error("Signaling channel not ready.");
+        return;
+    }
+
+    setCallType(type);
+    const offer = await callManagerRef.current!.initiateCall(type);
+    setLocalStream(callManagerRef.current!.getLocalStream());
+
+    signalingChannelRef.current.send({
+      type: "broadcast",
+      event: "call-offer",
+      payload: { offer, callType: type, fromUserId: user?.id },
+    });
+
+    callManagerRef.current!.getIceCandidates((candidate) => {
+      if (candidate) {
+        signalingChannelRef.current?.send({
+          type: "broadcast",
+          event: "ice-candidate",
+          payload: { candidate },
+        });
+      }
+    });
+  };
+
+  const handleAcceptCall = async () => {
+    if (!incomingOffer || !callType || !signalingChannelRef.current || !callingPeer) return;
+    setIsRinging(false);
+    const answer = await callManagerRef.current?.answerCall(incomingOffer, callType);
+    setLocalStream(callManagerRef.current?.getLocalStream() || null);
+    
+    signalingChannelRef.current.send({
+      type: "broadcast",
+      event: "call-answer",
+      payload: { answer },
+    });
+
+    callManagerRef.current?.getIceCandidates((candidate) => {
+      if (candidate) {
+        signalingChannelRef.current?.send({
+          type: "broadcast",
+          event: "ice-candidate",
+          payload: { candidate },
+        });
+      }
+    });
+    setIncomingOffer(null);
+  };
+
+  const handleDeclineCall = () => {
+    if (signalingChannelRef.current) { signalingChannelRef.current.send({ type: "broadcast", event: "call-decline" }); }
+    setIsRinging(false);
+    setIncomingOffer(null);
+    setCallingPeer(null);
+  };
+
   const send = async (overrides?: Partial<GroupMessage>) => {
     if (!user) return;
     const content = (overrides?.content ?? text).trim();
@@ -1970,6 +2229,15 @@ function GroupChatWindow({
     const { error } = await supabase.from("group_members").delete().eq("id", memberId);
     if (error) toast.error(error.message);
     else toast.success("Member removed");
+  };
+
+  const endCall = () => {
+    callManagerRef.current!.endCall();
+    signalingChannelRef.current?.send({
+      type: "broadcast",
+      event: "call-end",
+    });
+    setCallingPeer(null);
   };
 
   const onlineMembersCount = members.filter((m) => onlineMap[m.user_id]).length;
@@ -2224,6 +2492,20 @@ function GroupChatWindow({
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{name}</p>
+                        {m.user_id !== user?.id && (
+                          <div className="flex gap-2 mt-1">
+                            <button
+                              onClick={() => startCall("voice", profile!)}
+                              className="rounded-full p-1 hover:bg-primary/10 text-primary" title="Voice Call">
+                              <Phone className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => startCall("video", profile!)}
+                              className="rounded-full p-1 hover:bg-primary/10 text-primary" title="Video Call">
+                              <VideoIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
                         <p className="text-[10px] text-muted-foreground capitalize">
                           {m.role}{m.user_id === group.created_by ? " • creator" : ""}
                         </p>
@@ -2269,6 +2551,21 @@ function GroupChatWindow({
           </div>
         </div>
       )}
+
+      {/* Call UI (for GroupChatWindow) */}
+      {callState !== "idle" && callState !== "ended" && callType && callManagerRef.current && callingPeer && (
+        <CallUI
+          localStream={localStream}
+          remoteStream={remoteStream}
+          callType={callType}
+          callDuration={callDuration}
+          onEndCall={endCall}
+          onToggleMic={(enabled) => callManagerRef.current!.toggleAudio(enabled)}
+          onToggleVideo={(enabled) => callManagerRef.current!.toggleVideo(enabled)}
+          peerName={callingPeer.display_name ?? "User"}
+        />
+      )}
+
     </>
   );
 }
