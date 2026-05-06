@@ -1915,12 +1915,7 @@ function GroupChatWindow({
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3"
-        style={{
-          backgroundColor: "#0b141a",
-          backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
-          backgroundBlendMode: "overlay",
-        }}
+        className="flex-1 overflow-y-auto p-4 space-y-3 wa-bg-chat"
       >
         {messages.map((m) => {
           const mine = m.sender_id === user?.id;
