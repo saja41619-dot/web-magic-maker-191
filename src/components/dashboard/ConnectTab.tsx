@@ -293,10 +293,10 @@ export function ConnectTab() {
 
   return (
     <section className={cn(
-      "overflow-hidden border-border bg-card h-full",
+      "wa overflow-hidden border-border h-full",
       "rounded-none border-0 shadow-none md:rounded-2xl md:border md:shadow-elegant lg:rounded-none lg:border-0 lg:shadow-none"
-    )}>
-      <div className="grid h-full min-h-[500px] grid-cols-1 md:grid-cols-[320px_1fr]">
+    )} style={{ background: "var(--wa-panel)" }}>
+      <div className="grid h-full min-h-[500px] grid-cols-1 md:grid-cols-[340px_1fr]">
         {/* Sidebar list */}
         <aside
           className={cn(
