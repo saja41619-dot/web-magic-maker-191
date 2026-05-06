@@ -332,3 +332,39 @@
   100% { transform: scale(1); opacity: 1; }
 }
 .wa-pop { animation: wa-pop 0.18s ease-out; }
+
+/* Aggressive overrides: re-skin dark-theme tokens to WhatsApp palette
+   inside the Connect surface only. */
+.wa, .wa * {
+  --background: #ffffff;
+  --foreground: #111b21;
+  --card: #ffffff;
+  --card-foreground: #111b21;
+  --popover: #ffffff;
+  --popover-foreground: #111b21;
+  --primary: #128c7e;
+  --primary-foreground: #ffffff;
+  --primary-glow: #25d366;
+  --secondary: #f0f2f5;
+  --secondary-foreground: #111b21;
+  --muted: #f5f6f6;
+  --muted-foreground: #667781;
+  --accent: #25d366;
+  --accent-foreground: #ffffff;
+  --destructive: #e53935;
+  --destructive-foreground: #ffffff;
+  --border: #e9edef;
+  --input: #e9edef;
+  --ring: #128c7e;
+}
+.wa { background: var(--wa-panel); }
+.wa .bg-gradient-primary,
+.wa [class*="bg-gradient-primary"] {
+  background: linear-gradient(135deg, var(--wa-teal), var(--wa-green)) !important;
+  color: #fff !important;
+}
+.wa .shadow-glow { box-shadow: 0 6px 20px -10px rgba(18, 140, 126, 0.5) !important; }
+.wa .shadow-elegant { box-shadow: 0 8px 24px -16px rgba(11, 20, 26, 0.25) !important; }
+.wa .text-primary { color: var(--wa-teal) !important; }
+.wa .bg-primary { background-color: var(--wa-teal) !important; }
+.wa .ring-primary\/20 { --tw-ring-color: rgba(18, 140, 126, 0.2) !important; }
