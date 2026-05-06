@@ -35,8 +35,12 @@ import {
   ChevronDown,
   MessageSquare,
   Users, // Added for New Group icon
+  Archive,
+  BellOff,
+  Palette,
+  VolumeX,
 } from "lucide-react";
-// @ts-ignore
+// @ts-expect-error emoji-picker-react ships imperfect types
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,7 +64,6 @@ import {
   type ChatSetting,
   type Reaction,
 } from "@/lib/chatFeatures";
-import { Archive, BellOff, Palette, VolumeX } from "lucide-react";
 
 interface Profile {
   id: string;
@@ -83,6 +86,8 @@ interface DM {
   is_starred?: boolean;
   edited_at?: string | null;
   disappear_at?: string | null;
+  deleted_for_all?: boolean;
+  forwarded?: boolean;
 }
 
 interface Presence {
@@ -91,8 +96,7 @@ interface Presence {
   last_seen_at: string;
 }
 
-const TYPING_CHANNEL = (a: string, b: string) =>
-  `typing:${[a, b].sort().join(":")}`;
+const TYPING_CHANNEL = (a: string, b: string) => `typing:${[a, b].sort().join(":")}`;
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
@@ -145,8 +149,7 @@ export function ConnectTab() {
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSetting>>({});
   const [showArchived, setShowArchived] = useState(false);
 
-  const settingFor = (kind: "dm" | "group", key: string) =>
-    chatSettings[`${kind}:${key}`];
+  const settingFor = (kind: "dm" | "group", key: string) => chatSettings[`${kind}:${key}`];
 
   const reloadSettings = async () => {
     if (!user) return;
@@ -178,9 +181,13 @@ export function ConnectTab() {
 
       setUsers(profiles ?? []);
       const pmap: Record<string, Presence> = {};
-      (pres ?? []).forEach((p: any) => (pmap[p.user_id] = p as Presence));
+      (pres ?? []).forEach((p) => {
+        const userId = (p as Partial<Presence> & { user_id?: string }).user_id;
+        if (!userId) return;
+        pmap[userId] = p as Presence;
+      });
       setPresence(pmap);
-      
+
       if (grps) {
         setGroups(grps as unknown as ChatGroup[]);
       }
@@ -276,9 +283,7 @@ export function ConnectTab() {
       return tb.localeCompare(ta);
     });
     if (!q) return sorted;
-    return sorted.filter((u) =>
-      (u.display_name ?? "").toLowerCase().includes(q),
-    );
+    return sorted.filter((u) => (u.display_name ?? "").toLowerCase().includes(q));
   }, [users, search, lastMessages]);
 
   const openPeer = (p: Profile) => {
@@ -293,10 +298,13 @@ export function ConnectTab() {
   };
 
   return (
-    <section className={cn(
-      "wa overflow-hidden border-border h-full",
-      "rounded-none border-0 shadow-none md:rounded-2xl md:border md:shadow-elegant lg:rounded-none lg:border-0 lg:shadow-none"
-    )} style={{ background: "var(--wa-panel)" }}>
+    <section
+      className={cn(
+        "wa overflow-hidden border-border h-full",
+        "rounded-none border-0 shadow-none md:rounded-2xl md:border md:shadow-elegant lg:rounded-none lg:border-0 lg:shadow-none",
+      )}
+      style={{ background: "var(--wa-panel)" }}
+    >
       <div className="grid h-full min-h-[500px] grid-cols-1 md:grid-cols-[340px_1fr]">
         {/* Sidebar list */}
         <aside
@@ -307,7 +315,9 @@ export function ConnectTab() {
         >
           {/* WhatsApp-style header */}
           <div className="wa-bg-header flex items-center justify-between px-4 py-3">
-            <h2 className="text-base font-semibold" style={{ color: "var(--wa-teal-dark)" }}>Chats</h2>
+            <h2 className="text-base font-semibold" style={{ color: "var(--wa-teal-dark)" }}>
+              Chats
+            </h2>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setShowNewGroupModal(true)}
@@ -326,7 +336,10 @@ export function ConnectTab() {
           {/* Search */}
           <div className="px-3 py-2 wa-bg-list border-b wa-divider">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--wa-text-muted)" }} />
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+                style={{ color: "var(--wa-text-muted)" }}
+              />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -382,17 +395,25 @@ export function ConnectTab() {
                       isMuted={!!isMuted}
                       isArchived={!!setting?.archived}
                       onTogglePin={() => updateSetting(kind, key, { pinned: !isPinned })}
-                      onToggleArchive={() => updateSetting(kind, key, { archived: !setting?.archived })}
+                      onToggleArchive={() =>
+                        updateSetting(kind, key, { archived: !setting?.archived })
+                      }
                       onToggleMute={() =>
                         updateSetting(kind, key, {
-                          muted_until: isMuted ? null : new Date(Date.now() + 8 * 3600_000).toISOString(),
+                          muted_until: isMuted
+                            ? null
+                            : new Date(Date.now() + 8 * 3600_000).toISOString(),
                         })
                       }
                       avatar={
                         <div className="relative">
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-base font-bold text-primary-foreground">
                             {p.avatar_url ? (
-                              <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+                              <img
+                                src={p.avatar_url}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
                             ) : (
                               initial
                             )}
@@ -419,10 +440,14 @@ export function ConnectTab() {
                       isMuted={!!isMuted}
                       isArchived={!!setting?.archived}
                       onTogglePin={() => updateSetting(kind, key, { pinned: !isPinned })}
-                      onToggleArchive={() => updateSetting(kind, key, { archived: !setting?.archived })}
+                      onToggleArchive={() =>
+                        updateSetting(kind, key, { archived: !setting?.archived })
+                      }
                       onToggleMute={() =>
                         updateSetting(kind, key, {
-                          muted_until: isMuted ? null : new Date(Date.now() + 8 * 3600_000).toISOString(),
+                          muted_until: isMuted
+                            ? null
+                            : new Date(Date.now() + 8 * 3600_000).toISOString(),
                         })
                       }
                       avatar={
@@ -443,7 +468,9 @@ export function ConnectTab() {
         </aside>
 
         {/* Chat window */}
-        <div className={cn("flex flex-col min-w-0", !(activePeer || activeGroup) && "hidden md:flex")}>
+        <div
+          className={cn("flex flex-col min-w-0", !(activePeer || activeGroup) && "hidden md:flex")}
+        >
           {activePeer ? (
             <ChatWindow
               key={activePeer.id}
@@ -477,10 +504,13 @@ export function ConnectTab() {
                 Lovable Web
               </h3>
               <p className="mt-3 max-w-sm text-sm" style={{ color: "var(--wa-text-muted)" }}>
-                Send and receive messages, share files, make voice & video calls,
-                create polls, share location and more — all from your dashboard.
+                Send and receive messages, share files, make voice & video calls, create polls,
+                share location and more — all from your dashboard.
               </p>
-              <p className="mt-6 inline-flex items-center gap-2 text-xs" style={{ color: "var(--wa-text-muted)" }}>
+              <p
+                className="mt-6 inline-flex items-center gap-2 text-xs"
+                style={{ color: "var(--wa-text-muted)" }}
+              >
                 <span>🔒</span> End-to-end encryption is not enabled in this demo.
               </p>
             </div>
@@ -489,13 +519,12 @@ export function ConnectTab() {
 
         {/* New Group Modal */}
         {showNewGroupModal && (
-          <NewGroupModal 
-            allUsers={users} 
-            onClose={() => setShowNewGroupModal(false)} 
+          <NewGroupModal
+            allUsers={users}
+            onClose={() => setShowNewGroupModal(false)}
             onGroupCreated={() => void loadData()}
           />
         )}
-
       </div>
     </section>
   );
@@ -575,19 +604,28 @@ function ChatRow({
           className="absolute right-2 top-12 z-20 w-44 rounded-xl border border-border bg-card shadow-elegant py-1 text-sm"
         >
           <button
-            onClick={() => { onTogglePin(); setMenuOpen(false); }}
+            onClick={() => {
+              onTogglePin();
+              setMenuOpen(false);
+            }}
             className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
           >
             <Pin className="h-4 w-4" /> {isPinned ? "Unpin" : "Pin"}
           </button>
           <button
-            onClick={() => { onToggleMute(); setMenuOpen(false); }}
+            onClick={() => {
+              onToggleMute();
+              setMenuOpen(false);
+            }}
             className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
           >
             <BellOff className="h-4 w-4" /> {isMuted ? "Unmute" : "Mute 8h"}
           </button>
           <button
-            onClick={() => { onToggleArchive(); setMenuOpen(false); }}
+            onClick={() => {
+              onToggleArchive();
+              setMenuOpen(false);
+            }}
             className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
           >
             <Archive className="h-4 w-4" /> {isArchived ? "Unarchive" : "Archive"}
@@ -625,7 +663,6 @@ function ChatWindow({
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockList, setBlockList] = useState<string[]>([]);
   const [voicePlaybackSpeed, setVoicePlaybackSpeed] = useState(1);
-  const [callingPeer, setCallingPeer] = useState<Profile | null>(null); // The peer currently in a 1:1 call from this group context
   const [incomingOffer, setIncomingOffer] = useState<any>(null);
   const [isRinging, setIsRinging] = useState(false);
   const [forwardingMessage, setForwardingMessage] = useState<DM | null>(null);
@@ -633,21 +670,19 @@ function ChatWindow({
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Call State Management
   const [callState, setCallState] = useState<CallState>("idle");
-  const callStateRef = useRef<CallState>("idle");
-
-  useEffect(() => {
-    callStateRef.current = callState;
-  }, [callState]);
-
   const [callType, setCallType] = useState<CallType>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [callDuration, setCallDuration] = useState(0);
-  const callManagerRef = useRef<CallManager | null>(null);
-  
+
+  const callStateRef = useRef<CallState>("idle");
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
+
   // Initialize CallManager only on client side
+  const callManagerRef = useRef<CallManager | null>(null);
   if (!callManagerRef.current && typeof window !== "undefined") {
     callManagerRef.current = new CallManager();
   }
@@ -658,24 +693,9 @@ function ChatWindow({
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSent = useRef(0);
 
-  // Call State Management (for ChatWindow and GroupChatWindow)
-  // Ringtone management
-  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+  const typingTimeoutRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (isRinging) {
-      // You can replace this URL with your preferred ringtone
-      ringtoneRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3");
-      ringtoneRef.current.loop = true;
-      ringtoneRef.current.play().catch(e => console.log("Audio play blocked:", e));
-    } else {
-      ringtoneRef.current?.pause();
-      if (ringtoneRef.current) ringtoneRef.current.currentTime = 0;
-    }
-    return () => ringtoneRef.current?.pause();
-  }, [isRinging]);
-
-  // Fetch messages
+  // Load initial DM thread
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -688,8 +708,10 @@ function ChatWindow({
         )
         .order("created_at", { ascending: true })
         .limit(500);
+
       if (cancelled) return;
       setMessages((data ?? []) as DM[]);
+
       // mark all from peer as read
       await supabase
         .from("direct_messages")
@@ -698,29 +720,11 @@ function ChatWindow({
         .eq("recipient_id", user.id)
         .is("read_at", null);
     })();
+
     return () => {
       cancelled = true;
     };
   }, [user, peer.id]);
-
-  // Initialize CallManager only on client side
-  if (!callManagerRef.current && typeof window !== "undefined") {
-    callManagerRef.current = new CallManager();
-  }
-  const callTimerRef = useRef<number | null>(null);
-  const signalingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-
-  // Call State Management
-  const [callState, setCallState] = useState<CallState>("idle");
-  const callStateRef = useRef<CallState>("idle");
-
-  useEffect(() => {
-    callStateRef.current = callState;
-  }, [callState]);
-  const [callType, setCallType] = useState<CallType>(null);
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [callDuration, setCallDuration] = useState(0);
 
   // Realtime messages + typing
   useEffect(() => {
@@ -762,8 +766,8 @@ function ChatWindow({
       .on("broadcast", { event: "typing" }, (payload) => {
         if (payload.payload?.from === peer.id) {
           setPeerTyping(true);
-          window.clearTimeout((typingCh as any)._t);
-          (typingCh as any)._t = window.setTimeout(() => setPeerTyping(false), 2500);
+          if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = window.setTimeout(() => setPeerTyping(false), 2500);
         }
       })
       .subscribe();
@@ -806,77 +810,7 @@ function ChatWindow({
   // Call Signaling via Supabase Broadcast
   useEffect(() => {
     if (!user) return;
-    const topic = `call-signaling:${[user.id, peer.id].sort().join(':')}`;
-    const signalingCh = supabase.channel(topic, {
-      config: { broadcast: { self: false } },
-    });
-    signalingChannelRef.current = signalingCh;
-
-    signalingCh
-      .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
-        if (callStateRef.current !== "idle" && callStateRef.current !== "ended") return;
-        const { offer, callType: incomingType } = payload;
-        setCallType(incomingType);
-        setIncomingOffer(offer);
-        setIsRinging(true);
-      })
-      .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
-        const { answer } = payload;
-        await callManagerRef.current?.handleRemoteAnswer(answer);
-      })
-      .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
-        const { candidate } = payload;
-        if (candidate) {
-          await callManagerRef.current?.addIceCandidate(candidate);
-        }
-      })
-      .on("broadcast", { event: "call-decline" }, () => {
-        toast.error("Call declined");
-        setIsRinging(false);
-        setIncomingOffer(null);
-      })
-      .on("broadcast", { event: "call-end" }, () => {
-        callManagerRef.current?.endCall();
-      })
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(signalingCh);
-      signalingChannelRef.current = null;
-    };
-  }, [user, peer.id]);
-
-  // Initialize CallManager listeners
-  useEffect(() => {
-    if (!callManagerRef.current) return;
-    const cm = callManagerRef.current!;
-    cm.onRemoteStream((stream) => setRemoteStream(stream));
-    cm.onStateChange((state) => {
-      setCallState(state);
-      if (state === "active") {
-        setCallDuration(0);
-        callTimerRef.current = window.setInterval(() => {
-          setCallDuration((d) => d + 1);
-        }, 1000);
-      } else if (state === "ended" || state === "idle") {
-        if (callTimerRef.current) clearInterval(callTimerRef.current);
-        setCallType(null);
-        setLocalStream(null);
-        setRemoteStream(null);
-        setCallDuration(0);
-      }
-    });
-
-    return () => {
-      if (callTimerRef.current) clearInterval(callTimerRef.current);
-      cm.endCall();
-    };
-  }, []);
-
-  // Call Signaling via Supabase Broadcast
-  useEffect(() => {
-    if (!user) return;
-    const topic = `call-signaling:${[user.id, peer.id].sort().join(':')}`;
+    const topic = `call-signaling:${[user.id, peer.id].sort().join(":")}`;
     const signalingCh = supabase.channel(topic, {
       config: { broadcast: { self: false } },
     });
@@ -974,13 +908,13 @@ function ChatWindow({
   const deleteMessage = async (msgId: string, forEveryone = false) => {
     try {
       if (forEveryone) {
-        await supabase
-          .from("direct_messages")
-          .update({ deleted_for_all: true, content: null, attachment_url: null } as any)
-          .eq("id", msgId);
+        await supabase.from("direct_messages");
+        update({ deleted_for_all: true, content: null, attachment_url: null }).eq("id", msgId);
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === msgId ? { ...m, content: null, attachment_url: null, deleted_for_all: true } as any : m,
+            m.id === msgId
+              ? { ...m, content: null, attachment_url: null, deleted_for_all: true }
+              : m,
           ),
         );
       } else {
@@ -1018,7 +952,9 @@ function ChatWindow({
         .update({ content: editingText, edited_at: new Date().toISOString() })
         .eq("id", msgId);
       setMessages((prev) =>
-        prev.map((m) => (m.id === msgId ? { ...m, content: editingText, edited_at: new Date().toISOString() } : m)),
+        prev.map((m) =>
+          m.id === msgId ? { ...m, content: editingText, edited_at: new Date().toISOString() } : m,
+        ),
       );
       setEditingId(null);
       setEditingText("");
@@ -1049,14 +985,18 @@ function ChatWindow({
   const setWallpaper = async (wp: string | null) => {
     if (!user) return;
     await upsertChatSetting(user.id, "dm", peer.id, { wallpaper: wp });
-    setChatSetting((s) => ({ ...(s ?? ({} as any)), wallpaper: wp } as ChatSetting));
+    setChatSetting(
+      (s) => ({ ...(s ?? ({} as Partial<ChatSetting>)), wallpaper: wp }) as ChatSetting,
+    );
     setShowWallpapers(false);
   };
 
   const setDisappearing = async (sec: number | null) => {
     if (!user) return;
     await upsertChatSetting(user.id, "dm", peer.id, { disappearing_seconds: sec });
-    setChatSetting((s) => ({ ...(s ?? ({} as any)), disappearing_seconds: sec } as ChatSetting));
+    setChatSetting(
+      (s) => ({ ...(s ?? ({} as Partial<ChatSetting>)), disappearing_seconds: sec }) as ChatSetting,
+    );
     toast.success(sec ? "Disappearing on" : "Disappearing off");
   };
 
@@ -1092,7 +1032,7 @@ function ChatWindow({
     setIsRinging(false);
     const answer = await callManagerRef.current?.answerCall(incomingOffer, callType);
     setLocalStream(callManagerRef.current?.getLocalStream() || null);
-    
+
     signalingChannelRef.current.send({
       type: "broadcast",
       event: "call-answer",
@@ -1174,10 +1114,11 @@ function ChatWindow({
     if (!content && !overrides?.attachment_url) return;
     setSending(true);
     try {
-      const payload: any = {
+      const payload = {
+
         sender_id: user.id,
         recipient_id: peer.id,
-        content: overrides?.attachment_url ? overrides?.content ?? null : content || null,
+        content: overrides?.attachment_url ? (overrides?.content ?? null) : content || null,
         attachment_url: overrides?.attachment_url ?? null,
         attachment_type: overrides?.attachment_type ?? null,
         attachment_name: overrides?.attachment_name ?? null,
@@ -1189,7 +1130,8 @@ function ChatWindow({
         .select()
         .single();
       if (error) throw error;
-      if (data) setMessages((prev) => (prev.some((x) => x.id === data.id) ? prev : [...prev, data as DM]));
+      if (data)
+        setMessages((prev) => (prev.some((x) => x.id === data.id) ? prev : [...prev, data as DM]));
       if (!overrides?.attachment_url) setText("");
       setShowEmoji(false);
     } finally {
@@ -1311,7 +1253,9 @@ function ChatWindow({
         <div className="border-b border-border bg-background/50 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold">Wallpaper</p>
-            <button onClick={() => setShowWallpapers(false)}><X className="h-4 w-4" /></button>
+            <button onClick={() => setShowWallpapers(false)}>
+              <X className="h-4 w-4" />
+            </button>
           </div>
           <div className="flex gap-2 overflow-x-auto">
             {WALLPAPERS.map((w) => (
@@ -1328,14 +1272,18 @@ function ChatWindow({
             ))}
           </div>
           <div className="flex items-center justify-between pt-2 border-t border-border">
-            <p className="text-xs font-semibold inline-flex items-center gap-1"><Timer className="h-3 w-3" /> Disappearing</p>
+            <p className="text-xs font-semibold inline-flex items-center gap-1">
+              <Timer className="h-3 w-3" /> Disappearing
+            </p>
             <select
               value={String(chatSetting?.disappearing_seconds ?? "")}
               onChange={(e) => setDisappearing(e.target.value ? Number(e.target.value) : null)}
               className="text-xs bg-card border border-border rounded-md px-2 py-1"
             >
               {DISAPPEARING_OPTIONS.map((o) => (
-                <option key={o.label} value={o.value ?? ""}>{o.label}</option>
+                <option key={o.label} value={o.value ?? ""}>
+                  {o.label}
+                </option>
               ))}
             </select>
           </div>
@@ -1361,14 +1309,14 @@ function ChatWindow({
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <button 
+            <button
               onClick={() => startCall("voice")}
               className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors"
             >
               <Phone className="h-4 w-4" />
               <span className="text-xs font-medium">Voice call</span>
             </button>
-            <button 
+            <button
               onClick={() => startCall("video")}
               className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-2 text-primary hover:bg-primary/20 transition-colors"
             >
@@ -1384,7 +1332,10 @@ function ChatWindow({
               {messages
                 .filter((m) => pinnedMessages[m.id])
                 .map((m) => (
-                  <div key={m.id} className="bg-secondary/50 rounded-lg p-2 text-xs line-clamp-2 cursor-pointer hover:bg-secondary transition-colors">
+                  <div
+                    key={m.id}
+                    className="bg-secondary/50 rounded-lg p-2 text-xs line-clamp-2 cursor-pointer hover:bg-secondary transition-colors"
+                  >
                     {m.content || "(Attachment)"}
                   </div>
                 ))}
@@ -1399,7 +1350,7 @@ function ChatWindow({
                 "flex w-full items-center justify-center gap-2 rounded-lg p-2 text-xs font-medium transition-colors",
                 isBlocked
                   ? "bg-primary/10 text-primary hover:bg-primary/20"
-                  : "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                  : "bg-destructive/10 text-destructive hover:bg-destructive/20",
               )}
             >
               <Ban className="h-4 w-4" />
@@ -1674,7 +1625,7 @@ function ChatWindow({
             className="max-h-32 min-h-10 flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
           />
 
-          {(text.trim() || editingId) ? (
+          {text.trim() || editingId ? (
             <button
               onClick={() => {
                 if (editingId) {
@@ -1707,12 +1658,18 @@ function ChatWindow({
           <div className="relative mb-8">
             <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
             <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-4xl font-bold text-white shadow-2xl">
-              {peer.avatar_url ? <img src={peer.avatar_url} alt="" className="h-full w-full object-cover" /> : initial}
+              {peer.avatar_url ? (
+                <img src={peer.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initial
+              )}
             </div>
           </div>
           <h2 className="text-2xl font-bold mb-1">{peer.display_name || "User"}</h2>
-          <p className="text-muted-foreground animate-pulse mb-12 uppercase tracking-widest text-xs">Incoming {callType} call...</p>
-          
+          <p className="text-muted-foreground animate-pulse mb-12 uppercase tracking-widest text-xs">
+            Incoming {callType} call...
+          </p>
+
           {/* Swipe up to accept - Placeholder for visual effect, actual accept is via button */}
           {/* You would typically use a gesture library for actual swipe detection */}
           {/* For this example, the button directly triggers handleAcceptCall */}
@@ -1725,7 +1682,9 @@ function ChatWindow({
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500 text-white shadow-lg shadow-green-500/40 animate-bounce">
                 <Phone className="h-8 w-8" />
               </div>
-              <span className="text-xs font-bold text-green-500 uppercase tracking-tighter">Swipe Up to Accept</span>
+              <span className="text-xs font-bold text-green-500 uppercase tracking-tighter">
+                Swipe Up to Accept
+              </span>
             </button>
 
             <button
@@ -1758,25 +1717,29 @@ function ChatWindow({
           <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-elegant p-6">
             <h3 className="font-display text-lg font-bold mb-4">Forward message to...</h3>
             <div className="max-h-64 overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-border">
-              {allUsers.filter(u => u.id !== user?.id && u.id !== peer.id).length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-4">No other users to forward to.</p>
+              {allUsers.filter((u) => u.id !== user?.id && u.id !== peer.id).length === 0 ? (
+                <p className="text-center text-sm text-muted-foreground py-4">
+                  No other users to forward to.
+                </p>
               ) : (
-                allUsers.filter(u => u.id !== user?.id && u.id !== peer.id).map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => sendForwardedMessage(u)}
-                    className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-secondary/50 transition-colors text-left"
-                  >
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        u.display_name?.charAt(0).toUpperCase() || "U"
-                      )}
-                    </div>
-                    <p className="font-medium text-sm truncate">{u.display_name || "User"}</p>
-                  </button>
-                ))
+                allUsers
+                  .filter((u) => u.id !== user?.id && u.id !== peer.id)
+                  .map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => sendForwardedMessage(u)}
+                      className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-secondary/50 transition-colors text-left"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+                        {u.avatar_url ? (
+                          <img src={u.avatar_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          u.display_name?.charAt(0).toUpperCase() || "U"
+                        )}
+                      </div>
+                      <p className="font-medium text-sm truncate">{u.display_name || "User"}</p>
+                    </button>
+                  ))
               )}
             </div>
             <div className="flex justify-end gap-2 mt-6">
@@ -1845,34 +1808,40 @@ function GroupChatWindow({
   const lastTypingSent = useRef(0);
 
   // Call State Management (for GroupChatWindow)
-  const ringtoneRef = useRef<HTMLAudioElement | null>(null); // Moved outside useEffect
-
   const [callState, setCallState] = useState<CallState>("idle");
   const callStateRef = useRef<CallState>("idle");
-  useEffect(() => { callStateRef.current = callState; }, [callState]);
+  useEffect(() => {
+    callStateRef.current = callState;
+  }, [callState]);
 
   const [callType, setCallType] = useState<CallType>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [callDuration, setCallDuration] = useState(0);
   const callManagerRef = useRef<CallManager | null>(null);
-  if (!callManagerRef.current && typeof window !== "undefined") { callManagerRef.current = new CallManager(); }
+  if (!callManagerRef.current && typeof window !== "undefined") {
+    callManagerRef.current = new CallManager();
+  }
   const callTimerRef = useRef<number | null>(null);
   const signalingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [incomingOffer, setIncomingOffer] = useState<any>(null);
   const [isRinging, setIsRinging] = useState(false);
   const [callingPeer, setCallingPeer] = useState<Profile | null>(null); // The peer currently in a 1:1 call from this group context
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+
   const isAdmin = useMemo(
     () => members.some((m) => m.user_id === user?.id && m.role === "admin"),
-    [members, user]
+    [members, user],
   );
 
   // Ringtone management
   useEffect(() => {
     if (isRinging) {
-      ringtoneRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3");
+      ringtoneRef.current = new Audio(
+        "https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3",
+      );
       ringtoneRef.current.loop = true;
-      ringtoneRef.current.play().catch(e => console.log("Audio play blocked:", e));
+      ringtoneRef.current.play().catch((e) => console.log("Audio play blocked:", e));
     } else {
       ringtoneRef.current?.pause();
       if (ringtoneRef.current) ringtoneRef.current.currentTime = 0;
@@ -1886,7 +1855,12 @@ function GroupChatWindow({
     let cancelled = false;
     void (async () => {
       const [{ data: msgs }, { data: mems }, { data: pres }] = await Promise.all([
-        supabase.from("group_messages").select("*").eq("group_id", group.id).order("created_at", { ascending: true }).limit(500),
+        supabase
+          .from("group_messages")
+          .select("*")
+          .eq("group_id", group.id)
+          .order("created_at", { ascending: true })
+          .limit(500),
         supabase.from("group_members").select("*").eq("group_id", group.id),
         supabase.from("user_presence").select("*"),
       ]);
@@ -1913,33 +1887,20 @@ function GroupChatWindow({
       // Mark all unread messages as read by me
       const toMark = (msgs ?? []).filter((m: any) => m.sender_id !== user.id);
       if (toMark.length > 0) {
-        await supabase
-          .from("group_message_reads")
-          .upsert(
-            toMark.map((m: any) => ({
-              message_id: m.id,
-              user_id: user.id,
-              group_id: group.id,
-            })),
-            { onConflict: "message_id,user_id", ignoreDuplicates: true }
-          );
+        await supabase.from("group_message_reads").upsert(
+          toMark.map((m: any) => ({
+            message_id: m.id,
+            user_id: user.id,
+            group_id: group.id,
+          })),
+          { onConflict: "message_id,user_id", ignoreDuplicates: true },
+        );
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user, group.id]);
-
-  // Ringtone management
-  useEffect(() => {
-    if (isRinging) {
-      ringtoneRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3");
-      ringtoneRef.current.loop = true;
-      ringtoneRef.current.play().catch(e => console.log("Audio play blocked:", e));
-    } else {
-      ringtoneRef.current?.pause();
-      if (ringtoneRef.current) ringtoneRef.current.currentTime = 0;
-    }
-    return () => ringtoneRef.current?.pause();
-  }, [isRinging]);
 
   // Initialize CallManager listeners (for GroupChatWindow)
   useEffect(() => {
@@ -1979,7 +1940,7 @@ function GroupChatWindow({
       return;
     }
 
-    const topic = `call-signaling:${[user.id, callingPeer.id].sort().join(':')}`;
+    const topic = `call-signaling:${[user.id, callingPeer.id].sort().join(":")}`;
     const signalingCh = supabase.channel(topic, {
       config: { broadcast: { self: false } },
     });
@@ -1989,8 +1950,11 @@ function GroupChatWindow({
       .on("broadcast", { event: "call-offer" }, async ({ payload }) => {
         if (callStateRef.current !== "idle" && callStateRef.current !== "ended") return;
         const { offer, callType: incomingType, fromUserId } = payload;
-        const callerProfile = allUsers.find(u => u.id === fromUserId);
-        if (!callerProfile) { console.error("Caller profile not found for incoming call:", fromUserId); return; }
+        const callerProfile = allUsers.find((u) => u.id === fromUserId);
+        if (!callerProfile) {
+          console.error("Caller profile not found for incoming call:", fromUserId);
+          return;
+        }
         setCallingPeer(callerProfile);
         setCallType(incomingType);
         setIncomingOffer(offer);
@@ -2029,66 +1993,101 @@ function GroupChatWindow({
     if (!user) return;
     const ch = supabase
       .channel(`group:${group.id}`)
-      .on("postgres_changes", {
-        event: "INSERT", schema: "public", table: "group_messages",
-        filter: `group_id=eq.${group.id}`,
-      }, (payload) => {
-        const m = payload.new as GroupMessage;
-        setMessages((prev) => prev.some((x) => x.id === m.id) ? prev : [...prev, m]);
-        if (m.sender_id !== user.id) {
-          void supabase.from("group_message_reads").upsert(
-            { message_id: m.id, user_id: user.id, group_id: group.id },
-            { onConflict: "message_id,user_id", ignoreDuplicates: true }
-          );
-        }
-      })
-      .on("postgres_changes", {
-        event: "DELETE", schema: "public", table: "group_messages",
-        filter: `group_id=eq.${group.id}`,
-      }, (payload) => {
-        const old = payload.old as { id: string };
-        setMessages((prev) => prev.filter((m) => m.id !== old.id));
-      })
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "group_members",
-        filter: `group_id=eq.${group.id}`,
-      }, () => {
-        void supabase.from("group_members").select("*").eq("group_id", group.id)
-          .then(({ data }) => setMembers((data ?? []) as GroupMember[]));
-      })
-      .on("postgres_changes", {
-        event: "INSERT", schema: "public", table: "group_message_reads",
-        filter: `group_id=eq.${group.id}`,
-      }, (payload) => {
-        const r = payload.new as { message_id: string; user_id: string };
-        setReadsByMessage((prev) => {
-          const current = prev[r.message_id] ?? [];
-          if (current.includes(r.user_id)) return prev;
-          return { ...prev, [r.message_id]: [...current, r.user_id] };
-        });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "user_presence" }, (payload) => {
-        const p = payload.new as any;
-        if (p) setOnlineMap((prev) => ({ ...prev, [p.user_id]: !!p.is_online }));
-      })
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "group_messages",
+          filter: `group_id=eq.${group.id}`,
+        },
+        (payload) => {
+          const m = payload.new as GroupMessage;
+          setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
+          if (m.sender_id !== user.id) {
+            void supabase
+              .from("group_message_reads")
+              .upsert(
+                { message_id: m.id, user_id: user.id, group_id: group.id },
+                { onConflict: "message_id,user_id", ignoreDuplicates: true },
+              );
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "group_messages",
+          filter: `group_id=eq.${group.id}`,
+        },
+        (payload) => {
+          const old = payload.old as { id: string };
+          setMessages((prev) => prev.filter((m) => m.id !== old.id));
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "group_members",
+          filter: `group_id=eq.${group.id}`,
+        },
+        () => {
+          void supabase
+            .from("group_members")
+            .select("*")
+            .eq("group_id", group.id)
+            .then(({ data }) => setMembers((data ?? []) as GroupMember[]));
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "group_message_reads",
+          filter: `group_id=eq.${group.id}`,
+        },
+        (payload) => {
+          const r = payload.new as { message_id: string; user_id: string };
+          setReadsByMessage((prev) => {
+            const current = prev[r.message_id] ?? [];
+            if (current.includes(r.user_id)) return prev;
+            return { ...prev, [r.message_id]: [...current, r.user_id] };
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "user_presence" },
+        (payload) => {
+          const p = payload.new as any;
+          if (p) setOnlineMap((prev) => ({ ...prev, [p.user_id]: !!p.is_online }));
+        },
+      )
       .subscribe();
 
     // Typing presence channel
     const typingCh = supabase.channel(`group-typing:${group.id}`, {
       config: { broadcast: { self: false } },
     });
-    typingCh.on("broadcast", { event: "typing" }, (payload) => {
-      const { from, name } = payload.payload as { from: string; name: string };
-      if (from === user.id) return;
-      setTypingUsers((prev) => ({ ...prev, [from]: name }));
-      window.setTimeout(() => {
-        setTypingUsers((prev) => {
-          const next = { ...prev };
-          delete next[from];
-          return next;
-        });
-      }, 2500);
-    }).subscribe();
+    typingCh
+      .on("broadcast", { event: "typing" }, (payload) => {
+        const { from, name } = payload.payload as { from: string; name: string };
+        if (from === user.id) return;
+        setTypingUsers((prev) => ({ ...prev, [from]: name }));
+        window.setTimeout(() => {
+          setTypingUsers((prev) => {
+            const next = { ...prev };
+            delete next[from];
+            return next;
+          });
+        }, 2500);
+      })
+      .subscribe();
     typingChannelRef.current = typingCh;
 
     return () => {
@@ -2106,8 +2105,10 @@ function GroupChatWindow({
     const now = Date.now();
     if (now - lastTypingSent.current < 1500) return;
     lastTypingSent.current = now;
-    const meName = allUsers.find((u) => u.id === user?.id)?.display_name
-      || user?.user_metadata?.display_name || "Someone";
+    const meName =
+      allUsers.find((u) => u.id === user?.id)?.display_name ||
+      user?.user_metadata?.display_name ||
+      "Someone";
     typingChannelRef.current?.send({
       type: "broadcast",
       event: "typing",
@@ -2119,11 +2120,11 @@ function GroupChatWindow({
     setCallingPeer(targetPeer); // This will trigger the signaling useEffect
 
     // Small delay to allow signaling channel to be established
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     if (!signalingChannelRef.current) {
-        toast.error("Signaling channel not ready.");
-        return;
+      toast.error("Signaling channel not ready.");
+      return;
     }
 
     setCallType(type);
@@ -2152,7 +2153,7 @@ function GroupChatWindow({
     setIsRinging(false);
     const answer = await callManagerRef.current?.answerCall(incomingOffer, callType);
     setLocalStream(callManagerRef.current?.getLocalStream() || null);
-    
+
     signalingChannelRef.current.send({
       type: "broadcast",
       event: "call-answer",
@@ -2172,7 +2173,9 @@ function GroupChatWindow({
   };
 
   const handleDeclineCall = () => {
-    if (signalingChannelRef.current) { signalingChannelRef.current.send({ type: "broadcast", event: "call-decline" }); }
+    if (signalingChannelRef.current) {
+      signalingChannelRef.current.send({ type: "broadcast", event: "call-decline" });
+    }
     setIsRinging(false);
     setIncomingOffer(null);
     setCallingPeer(null);
@@ -2187,7 +2190,7 @@ function GroupChatWindow({
       const payload = {
         group_id: group.id,
         sender_id: user.id,
-        content: overrides?.attachment_url ? overrides?.content ?? null : content || null,
+        content: overrides?.attachment_url ? (overrides?.content ?? null) : content || null,
         attachment_url: overrides?.attachment_url ?? null,
         attachment_type: overrides?.attachment_type ?? null,
         attachment_name: overrides?.attachment_name ?? null,
@@ -2239,7 +2242,9 @@ function GroupChatWindow({
 
   const addMember = async (profile: Profile) => {
     const { error } = await supabase.from("group_members").insert({
-      group_id: group.id, user_id: profile.id, role: "member",
+      group_id: group.id,
+      user_id: profile.id,
+      role: "member",
     });
     if (error) toast.error(error.message);
     else {
@@ -2277,10 +2282,17 @@ function GroupChatWindow({
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-card/80 backdrop-blur-md px-4 py-3 sticky top-0 z-10">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <button onClick={onBack} className="md:hidden p-1.5 hover:bg-secondary rounded-lg" aria-label="Back">
+          <button
+            onClick={onBack}
+            className="md:hidden p-1.5 hover:bg-secondary rounded-lg"
+            aria-label="Back"
+          >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <button onClick={() => setShowInfo(true)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+          <button
+            onClick={() => setShowInfo(true)}
+            className="flex items-center gap-3 min-w-0 flex-1 text-left"
+          >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Users className="h-5 w-5" />
             </div>
@@ -2294,16 +2306,17 @@ function GroupChatWindow({
             </div>
           </button>
         </div>
-        <button onClick={() => setShowInfo(true)} className="rounded-lg p-2 hover:bg-secondary text-muted-foreground" aria-label="Group info">
+        <button
+          onClick={() => setShowInfo(true)}
+          className="rounded-lg p-2 hover:bg-secondary text-muted-foreground"
+          aria-label="Group info"
+        >
           <Info className="h-5 w-5" />
         </button>
       </div>
 
       {/* Messages */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-3 wa-bg-chat"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 wa-bg-chat">
         {messages.map((m) => {
           const mine = m.sender_id === user?.id;
           const sender = allUsers.find((u) => u.id === m.sender_id);
@@ -2316,37 +2329,54 @@ function GroupChatWindow({
           const someRead = readByOthers.length > 0;
 
           return (
-            <div key={m.id} className={cn("flex flex-col group", mine ? "items-end" : "items-start")}>
+            <div
+              key={m.id}
+              className={cn("flex flex-col group", mine ? "items-end" : "items-start")}
+            >
               {!mine && (
                 <span className="text-[10px] font-bold text-primary/90 mb-0.5 ml-2">
                   {sender?.display_name || "Unknown"}
                 </span>
               )}
-              <div className={cn(
-                "wa-bubble wa-pop",
-                mine ? "wa-bubble-out" : "wa-bubble-in"
-              )}>
+              <div className={cn("wa-bubble wa-pop", mine ? "wa-bubble-out" : "wa-bubble-in")}>
                 {replied && (
-                  <div className="mb-1.5 rounded-md p-2 border-l-4 text-xs"
-                    style={{ background: "rgba(0,0,0,0.04)", borderColor: "var(--wa-teal)" }}>
-                    <p className="font-bold opacity-80">{repliedSender?.display_name || "Unknown"}</p>
+                  <div
+                    className="mb-1.5 rounded-md p-2 border-l-4 text-xs"
+                    style={{ background: "rgba(0,0,0,0.04)", borderColor: "var(--wa-teal)" }}
+                  >
+                    <p className="font-bold opacity-80">
+                      {repliedSender?.display_name || "Unknown"}
+                    </p>
                     <p className="truncate opacity-70">
-                      {replied.content || (replied.attachment_type === "image" ? "📷 Photo" : replied.attachment_type === "voice" ? "🎤 Voice" : "📎 File")}
+                      {replied.content ||
+                        (replied.attachment_type === "image"
+                          ? "📷 Photo"
+                          : replied.attachment_type === "voice"
+                            ? "🎤 Voice"
+                            : "📎 File")}
                     </p>
                   </div>
                 )}
                 {m.attachment_type === "image" && m.attachment_url && (
                   <a href={m.attachment_url} target="_blank" rel="noreferrer">
-                    <img src={m.attachment_url} alt={m.attachment_name ?? ""} className="mb-1 max-h-64 rounded-md object-cover" />
+                    <img
+                      src={m.attachment_url}
+                      alt={m.attachment_name ?? ""}
+                      className="mb-1 max-h-64 rounded-md object-cover"
+                    />
                   </a>
                 )}
                 {m.attachment_type === "voice" && m.attachment_url && (
                   <VoicePlayer url={m.attachment_url} mine={mine} />
                 )}
                 {m.attachment_type === "file" && m.attachment_url && (
-                  <a href={m.attachment_url} target="_blank" rel="noreferrer"
+                  <a
+                    href={m.attachment_url}
+                    target="_blank"
+                    rel="noreferrer"
                     className="mb-1 flex items-center gap-2 rounded-md p-2 hover:underline"
-                    style={{ background: "rgba(0,0,0,0.04)" }}>
+                    style={{ background: "rgba(0,0,0,0.04)" }}
+                  >
                     <FileText className="h-4 w-4" />
                     <span className="truncate">{m.attachment_name ?? "File"}</span>
                   </a>
@@ -2355,31 +2385,54 @@ function GroupChatWindow({
                 <span className="wa-meta">
                   {formatTime(m.created_at)}
                   {mine && (
-                    <button onClick={() => setShowReceiptsFor(showReceiptsFor === m.id ? null : m.id)}
-                      className="ml-1 inline-flex" title="Read by">
-                      {allRead ? <CheckCheck className="h-3 w-3 wa-tick-read" /> :
-                       someRead ? <CheckCheck className="h-3 w-3 wa-tick" /> :
-                       <Check className="h-3 w-3 wa-tick" />}
+                    <button
+                      onClick={() => setShowReceiptsFor(showReceiptsFor === m.id ? null : m.id)}
+                      className="ml-1 inline-flex"
+                      title="Read by"
+                    >
+                      {allRead ? (
+                        <CheckCheck className="h-3 w-3 wa-tick-read" />
+                      ) : someRead ? (
+                        <CheckCheck className="h-3 w-3 wa-tick" />
+                      ) : (
+                        <Check className="h-3 w-3 wa-tick" />
+                      )}
                     </button>
                   )}
                 </span>
 
                 {/* Hover actions */}
-                <div className={cn(
-                  "absolute top-0 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 pb-1",
-                  mine ? "right-0" : "left-0"
-                )}>
-                  <button onClick={() => setReplyingTo(m)} className="rounded-full bg-card border border-border p-1.5 hover:bg-secondary" title="Reply">
+                <div
+                  className={cn(
+                    "absolute top-0 -translate-y-full opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 pb-1",
+                    mine ? "right-0" : "left-0",
+                  )}
+                >
+                  <button
+                    onClick={() => setReplyingTo(m)}
+                    className="rounded-full bg-card border border-border p-1.5 hover:bg-secondary"
+                    title="Reply"
+                  >
                     <Reply className="h-3.5 w-3.5" />
                   </button>
                   {m.content && (
-                    <button onClick={() => { navigator.clipboard.writeText(m.content!); toast.success("Copied"); }}
-                      className="rounded-full bg-card border border-border p-1.5 hover:bg-secondary" title="Copy">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(m.content!);
+                        toast.success("Copied");
+                      }}
+                      className="rounded-full bg-card border border-border p-1.5 hover:bg-secondary"
+                      title="Copy"
+                    >
                       <Copy className="h-3.5 w-3.5" />
                     </button>
                   )}
                   {mine && (
-                    <button onClick={() => deleteMessage(m.id)} className="rounded-full bg-card border border-border p-1.5 hover:bg-destructive/10 text-destructive" title="Delete">
+                    <button
+                      onClick={() => deleteMessage(m.id)}
+                      className="rounded-full bg-card border border-border p-1.5 hover:bg-destructive/10 text-destructive"
+                      title="Delete"
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   )}
@@ -2389,14 +2442,20 @@ function GroupChatWindow({
               {/* Read receipts dropdown */}
               {showReceiptsFor === m.id && mine && (
                 <div className="mt-1 rounded-lg border border-border bg-card p-2 text-xs shadow-lg max-w-[280px]">
-                  <p className="font-semibold mb-1.5 text-foreground">Read by ({readByOthers.length}/{otherMembers.length})</p>
+                  <p className="font-semibold mb-1.5 text-foreground">
+                    Read by ({readByOthers.length}/{otherMembers.length})
+                  </p>
                   {readByOthers.length === 0 ? (
                     <p className="text-muted-foreground">No one yet</p>
                   ) : (
                     <ul className="space-y-1">
                       {readByOthers.map((uid) => {
                         const u = allUsers.find((p) => p.id === uid);
-                        return <li key={uid} className="text-muted-foreground">• {u?.display_name || "User"}</li>;
+                        return (
+                          <li key={uid} className="text-muted-foreground">
+                            • {u?.display_name || "User"}
+                          </li>
+                        );
                       })}
                     </ul>
                   )}
@@ -2420,7 +2479,12 @@ function GroupChatWindow({
               {allUsers.find((u) => u.id === replyingTo.sender_id)?.display_name || "Unknown"}
             </p>
             <p className="text-sm truncate text-muted-foreground">
-              {replyingTo.content || (replyingTo.attachment_type === "image" ? "📷 Photo" : replyingTo.attachment_type === "voice" ? "🎤 Voice" : "📎 File")}
+              {replyingTo.content ||
+                (replyingTo.attachment_type === "image"
+                  ? "📷 Photo"
+                  : replyingTo.attachment_type === "voice"
+                    ? "🎤 Voice"
+                    : "📎 File")}
             </p>
           </div>
           <button onClick={() => setReplyingTo(null)} className="p-1 hover:bg-muted rounded-full">
@@ -2442,29 +2506,69 @@ function GroupChatWindow({
           </div>
         )}
         <div className="flex items-end gap-2">
-          <button onClick={() => setShowEmoji((s) => !s)} className="p-2 rounded-full hover:bg-secondary text-muted-foreground" aria-label="Emoji">
+          <button
+            onClick={() => setShowEmoji((s) => !s)}
+            className="p-2 rounded-full hover:bg-secondary text-muted-foreground"
+            aria-label="Emoji"
+          >
             <Smile className="h-5 w-5" />
           </button>
-          <button onClick={() => imageInputRef.current?.click()} className="p-2 rounded-full hover:bg-secondary text-muted-foreground" aria-label="Image">
+          <button
+            onClick={() => imageInputRef.current?.click()}
+            className="p-2 rounded-full hover:bg-secondary text-muted-foreground"
+            aria-label="Image"
+          >
             <ImageIcon className="h-5 w-5" />
           </button>
-          <input ref={imageInputRef} type="file" accept="image/*" className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadAndSend(f, "image"); e.target.value = ""; }} />
-          <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full hover:bg-secondary text-muted-foreground" aria-label="File">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void uploadAndSend(f, "image");
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="p-2 rounded-full hover:bg-secondary text-muted-foreground"
+            aria-label="File"
+          >
             <Paperclip className="h-5 w-5" />
           </button>
-          <input ref={fileInputRef} type="file" className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadAndSend(f, "file"); e.target.value = ""; }} />
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void uploadAndSend(f, "file");
+              e.target.value = "";
+            }}
+          />
           <input
             value={text}
-            onChange={(e) => { setText(e.target.value); sendTyping(); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
+            onChange={(e) => {
+              setText(e.target.value);
+              sendTyping();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void send();
+              }
+            }}
             placeholder="Type a message…"
             className="flex-1 bg-background border border-border rounded-full px-4 py-2.5 text-sm outline-none focus:border-primary"
           />
           {text.trim() ? (
-            <button onClick={() => void send()} disabled={sending}
-              className="h-10 w-10 flex items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow disabled:opacity-50">
+            <button
+              onClick={() => void send()}
+              disabled={sending}
+              className="h-10 w-10 flex items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-glow disabled:opacity-50"
+            >
               <Send className="h-4 w-4" />
             </button>
           ) : (
@@ -2475,11 +2579,20 @@ function GroupChatWindow({
 
       {/* Group Info Modal */}
       {showInfo && (
-        <div className="fixed inset-0 z-[103] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4" onClick={() => setShowInfo(false)}>
-          <div className="w-full max-w-md max-h-[85vh] flex flex-col rounded-2xl border border-border bg-card shadow-elegant" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[103] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4"
+          onClick={() => setShowInfo(false)}
+        >
+          <div
+            className="w-full max-w-md max-h-[85vh] flex flex-col rounded-2xl border border-border bg-card shadow-elegant"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h3 className="font-display text-lg font-bold">Group Info</h3>
-              <button onClick={() => setShowInfo(false)} className="text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setShowInfo(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -2489,7 +2602,8 @@ function GroupChatWindow({
               </div>
               <h4 className="font-bold text-lg">{group.name}</h4>
               <p className="text-xs text-muted-foreground mt-1">
-                Group • {members.length} members • Created {new Date(group.created_at).toLocaleDateString()}
+                Group • {members.length} members • Created{" "}
+                {new Date(group.created_at).toLocaleDateString()}
               </p>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
@@ -2498,24 +2612,43 @@ function GroupChatWindow({
                   {members.length} Members
                 </p>
                 {isAdmin && (
-                  <button onClick={() => setShowAddMember(true)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                  <button
+                    onClick={() => setShowAddMember(true)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  >
                     + Add member
                   </button>
                 )}
               </div>
               <div className="space-y-1">
                 {members.map((m) => {
-                  const profile = allUsers.find((u) => u.id === m.user_id) || (user?.id === m.user_id ? { id: user.id, display_name: "You", avatar_url: null } as Profile : null);
-                  const name = m.user_id === user?.id ? "You" : (profile?.display_name || "Unknown");
+                  const profile =
+                    allUsers.find((u) => u.id === m.user_id) ||
+                    (user?.id === m.user_id
+                      ? ({ id: user.id, display_name: "You", avatar_url: null } as Profile)
+                      : null);
+                  const name = m.user_id === user?.id ? "You" : profile?.display_name || "Unknown";
                   const isOnline = onlineMap[m.user_id];
                   return (
-                    <div key={m.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-secondary/50">
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-3 p-2 rounded-xl hover:bg-secondary/50"
+                    >
                       <div className="relative">
                         <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
-                          {profile?.avatar_url ? <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" /> : name.charAt(0).toUpperCase()}
+                          {profile?.avatar_url ? (
+                            <img
+                              src={profile.avatar_url}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            name.charAt(0).toUpperCase()
+                          )}
                         </div>
-                        {isOnline && <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-green-500" />}
+                        {isOnline && (
+                          <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-card bg-green-500" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{name}</p>
@@ -2523,23 +2656,31 @@ function GroupChatWindow({
                           <div className="flex gap-2 mt-1">
                             <button
                               onClick={() => startCall("voice", profile!)}
-                              className="rounded-full p-1 hover:bg-primary/10 text-primary" title="Voice Call">
+                              className="rounded-full p-1 hover:bg-primary/10 text-primary"
+                              title="Voice Call"
+                            >
                               <Phone className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => startCall("video", profile!)}
-                              className="rounded-full p-1 hover:bg-primary/10 text-primary" title="Video Call">
+                              className="rounded-full p-1 hover:bg-primary/10 text-primary"
+                              title="Video Call"
+                            >
                               <VideoIcon className="h-4 w-4" />
                             </button>
                           </div>
                         )}
                         <p className="text-[10px] text-muted-foreground capitalize">
-                          {m.role}{m.user_id === group.created_by ? " • creator" : ""}
+                          {m.role}
+                          {m.user_id === group.created_by ? " • creator" : ""}
                         </p>
                       </div>
                       {isAdmin && m.user_id !== user?.id && m.user_id !== group.created_by && (
-                        <button onClick={() => void removeMember(m.id, m.user_id)}
-                          className="p-1.5 rounded-full hover:bg-destructive/10 text-destructive" title="Remove">
+                        <button
+                          onClick={() => void removeMember(m.id, m.user_id)}
+                          className="p-1.5 rounded-full hover:bg-destructive/10 text-destructive"
+                          title="Remove"
+                        >
                           <X className="h-4 w-4" />
                         </button>
                       )}
@@ -2554,45 +2695,68 @@ function GroupChatWindow({
 
       {/* Add Member Modal */}
       {showAddMember && (
-        <div className="fixed inset-0 z-[104] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4" onClick={() => setShowAddMember(false)}>
-          <div className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl border border-border bg-card shadow-elegant" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[104] flex items-center justify-center bg-background/90 backdrop-blur-sm p-4"
+          onClick={() => setShowAddMember(false)}
+        >
+          <div
+            className="w-full max-w-md max-h-[80vh] flex flex-col rounded-2xl border border-border bg-card shadow-elegant"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h3 className="font-display text-lg font-bold">Add Member</h3>
-              <button onClick={() => setShowAddMember(false)} className="text-muted-foreground hover:text-foreground">
+              <button
+                onClick={() => setShowAddMember(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {nonMembers.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-6">All users are already members.</p>
-              ) : nonMembers.map((u) => (
-                <button key={u.id} onClick={() => void addMember(u)}
-                  className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-secondary/50 text-left">
-                  <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
-                    {u.avatar_url ? <img src={u.avatar_url} alt="" className="h-full w-full object-cover" /> : (u.display_name?.charAt(0).toUpperCase() || "U")}
-                  </div>
-                  <p className="text-sm font-medium truncate">{u.display_name || "User"}</p>
-                </button>
-              ))}
+                <p className="text-center text-sm text-muted-foreground py-6">
+                  All users are already members.
+                </p>
+              ) : (
+                nonMembers.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => void addMember(u)}
+                    className="flex items-center gap-3 w-full p-2 rounded-xl hover:bg-secondary/50 text-left"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-sm font-bold text-primary-foreground">
+                      {u.avatar_url ? (
+                        <img src={u.avatar_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        u.display_name?.charAt(0).toUpperCase() || "U"
+                      )}
+                    </div>
+                    <p className="text-sm font-medium truncate">{u.display_name || "User"}</p>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>
       )}
 
       {/* Call UI (for GroupChatWindow) */}
-      {callState !== "idle" && callState !== "ended" && callType && callManagerRef.current && callingPeer && (
-        <CallUI
-          localStream={localStream}
-          remoteStream={remoteStream}
-          callType={callType}
-          callDuration={callDuration}
-          onEndCall={endCall}
-          onToggleMic={(enabled) => callManagerRef.current!.toggleAudio(enabled)}
-          onToggleVideo={(enabled) => callManagerRef.current!.toggleVideo(enabled)}
-          peerName={callingPeer.display_name ?? "User"}
-        />
-      )}
-
+      {callState !== "idle" &&
+        callState !== "ended" &&
+        callType &&
+        callManagerRef.current &&
+        callingPeer && (
+          <CallUI
+            localStream={localStream}
+            remoteStream={remoteStream}
+            callType={callType}
+            callDuration={callDuration}
+            onEndCall={endCall}
+            onToggleMic={(enabled) => callManagerRef.current!.toggleAudio(enabled)}
+            onToggleVideo={(enabled) => callManagerRef.current!.toggleVideo(enabled)}
+            peerName={callingPeer.display_name ?? "User"}
+          />
+        )}
     </>
   );
 }
@@ -2635,22 +2799,17 @@ function MessageItem({
   const [voiceSpeed, setVoiceSpeed] = useState(1);
 
   const isForwarded = message.content?.startsWith("[Forwarded]");
-  const displayContent = isForwarded ? message.content?.replace("[Forwarded]\n", "") : message.content;
+  const displayContent = isForwarded
+    ? message.content?.replace("[Forwarded]\n", "")
+    : message.content;
 
   return (
     <div className={cn("flex flex-col", mine ? "items-end" : "items-start")}>
       {!mine && senderName && (
-        <span className="text-[10px] font-bold text-primary mb-0.5 ml-2">
-          {senderName}
-        </span>
+        <span className="text-[10px] font-bold text-primary mb-0.5 ml-2">{senderName}</span>
       )}
       <div className="relative group">
-        <div
-          className={cn(
-            "wa-bubble wa-pop",
-            mine ? "wa-bubble-out" : "wa-bubble-in",
-          )}
-        >
+        <div className={cn("wa-bubble wa-pop", mine ? "wa-bubble-out" : "wa-bubble-in")}>
           {isPinned && (
             <div className="flex items-center gap-1 mb-1 text-[10px] wa-text-muted">
               <Pin className="h-3 w-3" /> Pinned
@@ -2694,7 +2853,8 @@ function MessageItem({
           <span className="wa-meta">
             {message.edited_at && <span className="mr-1">edited</span>}
             {formatTime(message.created_at)}
-            {mine && message.read_at !== undefined &&
+            {mine &&
+              message.read_at !== undefined &&
               (message.read_at ? (
                 <CheckCheck className="h-3 w-3 wa-tick-read" />
               ) : (
@@ -2719,7 +2879,7 @@ function MessageItem({
             onClick={onPin}
             className={cn(
               "flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border hover:bg-secondary",
-              isPinned && "bg-primary text-primary-foreground"
+              isPinned && "bg-primary text-primary-foreground",
             )}
             title="Pin"
           >
@@ -2729,7 +2889,7 @@ function MessageItem({
             onClick={onStar}
             className={cn(
               "flex h-7 w-7 items-center justify-center rounded-full bg-background border border-border hover:bg-secondary",
-              isStarred && "bg-yellow-500 text-white"
+              isStarred && "bg-yellow-500 text-white",
             )}
             title="Star"
           >
@@ -2971,7 +3131,7 @@ function VoicePlayer({ url, mine, speed = 1 }: { url: string; mine: boolean; spe
               onClick={() => handleSpeedChange(s)}
               className={cn(
                 "block w-full text-left px-3 py-1.5 text-xs hover:bg-secondary",
-                playbackSpeed === s && "bg-primary text-primary-foreground"
+                playbackSpeed === s && "bg-primary text-primary-foreground",
               )}
             >
               {s}x
