@@ -36,6 +36,7 @@ import {
   MessageSquare,
   Users, // Added for New Group icon
 } from "lucide-react";
+// @ts-ignore
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -1866,6 +1867,19 @@ function GroupChatWindow({
     [members, user]
   );
 
+  // Ringtone management
+  useEffect(() => {
+    if (isRinging) {
+      ringtoneRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3");
+      ringtoneRef.current.loop = true;
+      ringtoneRef.current.play().catch(e => console.log("Audio play blocked:", e));
+    } else {
+      ringtoneRef.current?.pause();
+      if (ringtoneRef.current) ringtoneRef.current.currentTime = 0;
+    }
+    return () => ringtoneRef.current?.pause();
+  }, [isRinging]);
+
   // Initial load: messages + members + reads + presence
   useEffect(() => {
     if (!user) return;
@@ -1913,6 +1927,19 @@ function GroupChatWindow({
     })();
     return () => { cancelled = true; };
   }, [user, group.id]);
+
+  // Ringtone management
+  useEffect(() => {
+    if (isRinging) {
+      ringtoneRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3");
+      ringtoneRef.current.loop = true;
+      ringtoneRef.current.play().catch(e => console.log("Audio play blocked:", e));
+    } else {
+      ringtoneRef.current?.pause();
+      if (ringtoneRef.current) ringtoneRef.current.currentTime = 0;
+    }
+    return () => ringtoneRef.current?.pause();
+  }, [isRinging]);
 
   // Initialize CallManager listeners (for GroupChatWindow)
   useEffect(() => {
