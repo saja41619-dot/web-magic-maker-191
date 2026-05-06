@@ -406,6 +406,8 @@ function ChatWindow({
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockList, setBlockList] = useState<string[]>([]);
   const [voicePlaybackSpeed, setVoicePlaybackSpeed] = useState(1);
+  const [incomingOffer, setIncomingOffer] = useState<any>(null);
+  const [isRinging, setIsRinging] = useState(false);
   const [forwardingMessage, setForwardingMessage] = useState<DM | null>(null);
   const [showDisappearingOptions, setShowDisappearingOptions] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -435,6 +437,22 @@ function ChatWindow({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTypingSent = useRef(0);
+
+  // Ringtone management
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    if (isRinging) {
+      // You can replace this URL with your preferred ringtone
+      ringtoneRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3");
+      ringtoneRef.current.loop = true;
+      ringtoneRef.current.play().catch(e => console.log("Audio play blocked:", e));
+    } else {
+      ringtoneRef.current?.pause();
+      if (ringtoneRef.current) ringtoneRef.current.currentTime = 0;
+    }
+    return () => ringtoneRef.current?.pause();
+  }, [isRinging]);
 
   // Fetch messages
   useEffect(() => {
@@ -559,23 +577,8 @@ function ChatWindow({
         if (callStateRef.current !== "idle" && callStateRef.current !== "ended") return;
         const { offer, callType: incomingType } = payload;
         setCallType(incomingType);
-        const answer = await callManagerRef.current?.answerCall(offer, incomingType);
-        setLocalStream(callManagerRef.current?.getLocalStream() || null);
-        signalingCh.send({
-          type: "broadcast",
-          event: "call-answer",
-          payload: { answer },
-        });
-
-        callManagerRef.current?.getIceCandidates((candidate) => {
-          if (candidate) {
-            signalingCh.send({
-              type: "broadcast",
-              event: "ice-candidate",
-              payload: { candidate },
-            });
-          }
-        });
+        setIncomingOffer(offer);
+        setIsRinging(true);
       })
       .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
         const { answer } = payload;
@@ -586,6 +589,11 @@ function ChatWindow({
         if (candidate) {
           await callManagerRef.current?.addIceCandidate(candidate);
         }
+      })
+      .on("broadcast", { event: "call-decline" }, () => {
+        toast.error("Call declined");
+        setIsRinging(false);
+        setIncomingOffer(null);
       })
       .on("broadcast", { event: "call-end" }, () => {
         callManagerRef.current?.endCall();
@@ -695,6 +703,41 @@ function ChatWindow({
       setSending(false);
       setForwardingMessage(null); // Close modal after sending
     }
+  };
+
+  const handleAcceptCall = async () => {
+    if (!incomingOffer || !callType || !signalingChannelRef.current) return;
+    setIsRinging(false);
+    const answer = await callManagerRef.current?.answerCall(incomingOffer, callType);
+    setLocalStream(callManagerRef.current?.getLocalStream() || null);
+    
+    signalingChannelRef.current.send({
+      type: "broadcast",
+      event: "call-answer",
+      payload: { answer },
+    });
+
+    callManagerRef.current?.getIceCandidates((candidate) => {
+      if (candidate) {
+        signalingChannelRef.current?.send({
+          type: "broadcast",
+          event: "ice-candidate",
+          payload: { candidate },
+        });
+      }
+    });
+    setIncomingOffer(null);
+  };
+
+  const handleDeclineCall = () => {
+    if (signalingChannelRef.current) {
+      signalingChannelRef.current.send({
+        type: "broadcast",
+        event: "call-decline",
+      });
+    }
+    setIsRinging(false);
+    setIncomingOffer(null);
   };
 
   const startCall = async (type: "voice" | "video") => {
@@ -1236,6 +1279,40 @@ function ChatWindow({
           )}
         </div>
       </div>
+
+      {/* Incoming Call Ringing UI Overlay */}
+      {isRinging && (
+        <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-background/90 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="relative mb-8">
+            <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+            <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-4xl font-bold text-white shadow-2xl">
+              {peer.avatar_url ? <img src={peer.avatar_url} alt="" className="h-full w-full object-cover" /> : initial}
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold mb-1">{peer.display_name || "User"}</h2>
+          <p className="text-muted-foreground animate-pulse mb-12 uppercase tracking-widest text-xs">Incoming {callType} call...</p>
+          
+          <div className="flex flex-col items-center gap-10 w-full max-w-xs">
+            <button
+              onClick={handleAcceptCall}
+              className="group relative flex flex-col items-center gap-3 transition-transform active:scale-95"
+            >
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500 text-white shadow-lg shadow-green-500/40 animate-bounce">
+                <Phone className="h-8 w-8" />
+              </div>
+              <span className="text-xs font-bold text-green-500 uppercase tracking-tighter">Swipe Up to Accept</span>
+            </button>
+
+            <button
+              onClick={handleDeclineCall}
+              className="flex items-center gap-2 rounded-full bg-destructive/10 px-8 py-3 text-destructive hover:bg-destructive/20 transition-colors font-semibold"
+            >
+              <X className="h-5 w-5" />
+              Decline
+            </button>
+          </div>
+        </div>
+      )}
 
       {callState !== "idle" && callState !== "ended" && callType && callManagerRef.current && (
         <CallUI
