@@ -1304,16 +1304,8 @@ function ChatWindow({
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 space-y-4 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-border relative"
-        style={
-          chatSetting?.wallpaper
-            ? { background: chatSetting.wallpaper }
-            : {
-                backgroundColor: "#0b141a",
-                backgroundImage: `url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')`,
-                backgroundBlendMode: "overlay",
-              }
-        }
+        className="flex-1 space-y-3 overflow-y-auto p-4 relative wa-bg-chat"
+        style={chatSetting?.wallpaper ? { background: chatSetting.wallpaper } : undefined}
       >
         {filteredMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
