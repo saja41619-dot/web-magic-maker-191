@@ -1951,14 +1951,12 @@ function GroupChatWindow({
                 </span>
               )}
               <div className={cn(
-                "relative max-w-[85%] rounded-2xl px-3 py-2 text-sm shadow-elegant",
-                mine ? "rounded-tr-none bg-gradient-primary text-primary-foreground" : "rounded-tl-none bg-card border border-border text-foreground"
+                "wa-bubble wa-pop",
+                mine ? "wa-bubble-out" : "wa-bubble-in"
               )}>
                 {replied && (
-                  <div className={cn(
-                    "mb-1.5 rounded-lg p-2 border-l-4 text-xs",
-                    mine ? "bg-white/10 border-white/40" : "bg-secondary border-primary/40"
-                  )}>
+                  <div className="mb-1.5 rounded-md p-2 border-l-4 text-xs"
+                    style={{ background: "rgba(0,0,0,0.04)", borderColor: "var(--wa-teal)" }}>
                     <p className="font-bold opacity-80">{repliedSender?.display_name || "Unknown"}</p>
                     <p className="truncate opacity-70">
                       {replied.content || (replied.attachment_type === "image" ? "📷 Photo" : replied.attachment_type === "voice" ? "🎤 Voice" : "📎 File")}
@@ -1967,7 +1965,7 @@ function GroupChatWindow({
                 )}
                 {m.attachment_type === "image" && m.attachment_url && (
                   <a href={m.attachment_url} target="_blank" rel="noreferrer">
-                    <img src={m.attachment_url} alt={m.attachment_name ?? ""} className="mb-1 max-h-64 rounded-lg object-cover" />
+                    <img src={m.attachment_url} alt={m.attachment_name ?? ""} className="mb-1 max-h-64 rounded-md object-cover" />
                   </a>
                 )}
                 {m.attachment_type === "voice" && m.attachment_url && (
@@ -1975,24 +1973,24 @@ function GroupChatWindow({
                 )}
                 {m.attachment_type === "file" && m.attachment_url && (
                   <a href={m.attachment_url} target="_blank" rel="noreferrer"
-                    className={cn("mb-1 flex items-center gap-2 rounded-lg p-2 hover:underline", mine ? "bg-white/10" : "bg-secondary")}>
+                    className="mb-1 flex items-center gap-2 rounded-md p-2 hover:underline"
+                    style={{ background: "rgba(0,0,0,0.04)" }}>
                     <FileText className="h-4 w-4" />
                     <span className="truncate">{m.attachment_name ?? "File"}</span>
                   </a>
                 )}
                 {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
-                <div className={cn("mt-1 flex items-center justify-end gap-1 text-[10px]",
-                  mine ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                  <span>{formatTime(m.created_at)}</span>
+                <span className="wa-meta">
+                  {formatTime(m.created_at)}
                   {mine && (
                     <button onClick={() => setShowReceiptsFor(showReceiptsFor === m.id ? null : m.id)}
-                      className="hover:opacity-100 opacity-80" title="Read by">
-                      {allRead ? <CheckCheck className="h-3 w-3 text-blue-300" /> :
-                       someRead ? <CheckCheck className="h-3 w-3" /> :
-                       <Check className="h-3 w-3" />}
+                      className="ml-1 inline-flex" title="Read by">
+                      {allRead ? <CheckCheck className="h-3 w-3 wa-tick-read" /> :
+                       someRead ? <CheckCheck className="h-3 w-3 wa-tick" /> :
+                       <Check className="h-3 w-3 wa-tick" />}
                     </button>
                   )}
-                </div>
+                </span>
 
                 {/* Hover actions */}
                 <div className={cn(
