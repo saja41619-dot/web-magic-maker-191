@@ -300,30 +300,40 @@ export function ConnectTab() {
         {/* Sidebar list */}
         <aside
           className={cn(
-            "flex flex-col border-r border-border bg-background/30",
-            activePeer && "hidden md:flex",
+            "flex flex-col wa-bg-list border-r wa-divider",
+            (activePeer || activeGroup) && "hidden md:flex",
           )}
         >
-          <div className="border-b border-border p-3">
+          {/* WhatsApp-style header */}
+          <div className="wa-bg-header flex items-center justify-between px-4 py-3">
+            <h2 className="text-base font-semibold" style={{ color: "var(--wa-teal-dark)" }}>Chats</h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setShowNewGroupModal(true)}
+                className="wa-icon-btn"
+                title="New group"
+                aria-label="New group"
+              >
+                <Users className="h-5 w-5" />
+              </button>
+              <button className="wa-icon-btn" title="More" aria-label="More">
+                <MoreVertical className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="px-3 py-2 wa-bg-list border-b wa-divider">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--wa-text-muted)" }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search users…"
-                className="h-10 w-full rounded-xl border border-border bg-card pl-9 pr-3 text-sm outline-none focus:border-primary"
+                placeholder="Search or start new chat"
+                className="h-9 w-full rounded-lg pl-9 pr-3 text-sm outline-none"
+                style={{ background: "var(--wa-panel)", color: "var(--wa-text)" }}
               />
             </div>
-            <button
-              onClick={() => setShowNewGroupModal(true)}
-              className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-all duration-200 hover:bg-secondary/50 mt-2"
-            >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Users className="h-6 w-6" />
-              </div>
-              <p className="truncate text-sm font-semibold">New Group</p>
-            </button>
-
           </div>
 
           <StatusBar users={users} />
