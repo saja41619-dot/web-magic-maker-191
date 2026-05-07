@@ -328,6 +328,14 @@ export function ConnectTab() {
               >
                 <Users className="h-5 w-5" />
               </button>
+              <button
+                onClick={() => setShowFeaturesHub(true)}
+                className="wa-icon-btn"
+                title="WhatsApp features"
+                aria-label="WhatsApp features"
+              >
+                <Sparkles className="h-5 w-5" />
+              </button>
               <button className="wa-icon-btn" title="More" aria-label="More">
                 <MoreVertical className="h-5 w-5" />
               </button>
