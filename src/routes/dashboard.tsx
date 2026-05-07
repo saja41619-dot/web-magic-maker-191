@@ -151,7 +151,6 @@ function DashboardContent() {
       /* noop */
     }
   }, [activeTab]);
-
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
