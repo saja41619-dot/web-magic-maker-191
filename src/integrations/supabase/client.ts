@@ -5,12 +5,30 @@ import type { Database } from './types';
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  const SUPABASE_URL =
+    import.meta.env.VITE_SUPABASE_URL ||
+    import.meta.env.SUPABASE_URL ||
+    process.env.SUPABASE_URL;
+  const SUPABASE_PUBLISHABLE_KEY =
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    import.meta.env.SUPABASE_PUBLISHABLE_KEY ||
+    process.env.SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+    // Helpful diagnostics for local dev
+    const keys = typeof import.meta !== "undefined" ? Object.keys(import.meta.env ?? {}) : [];
+    const hinted = keys.filter(
+      (k) => k.includes("SUPABASE") || k === "MODE" || k === "BASE_URL" || k === "DEV",
+    );
     throw new Error(
-      'Missing Supabase environment variables. Ensure SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (or VITE_ prefixed versions) are set in your .env file.'
+      [
+        "Missing Supabase environment variables.",
+        "Expected VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (recommended) or SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY (SSR).",
+        "If running locally, ensure your `.env` file is in the Vite project root (the folder containing `vite.config.ts`).",
+        hinted.length ? `Visible import.meta.env keys: ${hinted.join(", ")}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
     );
   }
 
