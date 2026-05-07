@@ -909,8 +909,10 @@ function ChatWindow({
   const deleteMessage = async (msgId: string, forEveryone = false) => {
     try {
       if (forEveryone) {
-        await supabase.from("direct_messages");
-        update({ deleted_for_all: true, content: null, attachment_url: null }).eq("id", msgId);
+        await supabase
+          .from("direct_messages")
+          .update({ deleted_for_all: true, content: null, attachment_url: null })
+          .eq("id", msgId);
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId
