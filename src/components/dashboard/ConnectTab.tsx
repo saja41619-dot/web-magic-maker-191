@@ -1813,6 +1813,8 @@ function GroupChatWindow({
   // Call State Management (for GroupChatWindow)
   const [callState, setCallState] = useState<CallState>("idle");
   const callStateRef = useRef<CallState>("idle");
+  const [isRinging, setIsRinging] = useState(false);
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
     callStateRef.current = callState;
   }, [callState]);
