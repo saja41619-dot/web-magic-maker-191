@@ -40,7 +40,6 @@ import {
   Palette,
   VolumeX,
 } from "lucide-react";
-// @ts-expect-error emoji-picker-react ships imperfect types
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
