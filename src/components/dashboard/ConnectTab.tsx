@@ -39,8 +39,8 @@ import {
   BellOff,
   Palette,
   VolumeX,
+  Sparkles,
 } from "lucide-react";
-// @ts-expect-error emoji-picker-react ships imperfect types
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +51,7 @@ import { CallUI } from "@/components/CallUI";
 import { cn } from "@/lib/utils";
 import { NewGroupModal } from "./NewGroupModal";
 import { StatusBar } from "./StatusBar";
+import { WhatsAppFeaturesHub } from "./WhatsAppFeaturesHub";
 import {
   loadChatSettings,
   upsertChatSetting,
@@ -144,6 +145,7 @@ export function ConnectTab() {
   const [activePeer, setActivePeer] = useState<Profile | null>(null);
   const [activeGroup, setActiveGroup] = useState<ChatGroup | null>(null);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
+  const [showFeaturesHub, setShowFeaturesHub] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSetting>>({});
@@ -326,6 +328,14 @@ export function ConnectTab() {
                 aria-label="New group"
               >
                 <Users className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowFeaturesHub(true)}
+                className="wa-icon-btn"
+                title="WhatsApp features"
+                aria-label="WhatsApp features"
+              >
+                <Sparkles className="h-5 w-5" />
               </button>
               <button className="wa-icon-btn" title="More" aria-label="More">
                 <MoreVertical className="h-5 w-5" />
@@ -525,6 +535,8 @@ export function ConnectTab() {
             onGroupCreated={() => void loadData()}
           />
         )}
+
+        <WhatsAppFeaturesHub open={showFeaturesHub} onOpenChange={setShowFeaturesHub} />
       </div>
     </section>
   );
@@ -909,8 +921,10 @@ function ChatWindow({
   const deleteMessage = async (msgId: string, forEveryone = false) => {
     try {
       if (forEveryone) {
-        await supabase.from("direct_messages");
-        update({ deleted_for_all: true, content: null, attachment_url: null }).eq("id", msgId);
+        await supabase
+          .from("direct_messages")
+          .update({ deleted_for_all: true, content: null, attachment_url: null })
+          .eq("id", msgId);
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId
@@ -1811,6 +1825,8 @@ function GroupChatWindow({
   // Call State Management (for GroupChatWindow)
   const [callState, setCallState] = useState<CallState>("idle");
   const callStateRef = useRef<CallState>("idle");
+  const [isRinging, setIsRinging] = useState(false);
+  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
     callStateRef.current = callState;
   }, [callState]);
@@ -1852,9 +1868,8 @@ function GroupChatWindow({
   const callTimerRef = useRef<number | null>(null);
   const signalingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [incomingOffer, setIncomingOffer] = useState<any>(null);
-  const [isRinging, setIsRinging] = useState(false);
+  // (isRinging + ringtoneRef declared above to satisfy effect ordering)
   const [callingPeer, setCallingPeer] = useState<Profile | null>(null); // The peer currently in a 1:1 call from this group context
-  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
   const isAdmin = useMemo(
     () => members.some((m) => m.user_id === user?.id && m.role === "admin"),
