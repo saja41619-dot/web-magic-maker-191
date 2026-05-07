@@ -1854,9 +1854,8 @@ function GroupChatWindow({
   const callTimerRef = useRef<number | null>(null);
   const signalingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const [incomingOffer, setIncomingOffer] = useState<any>(null);
-  const [isRinging, setIsRinging] = useState(false);
+  // (isRinging + ringtoneRef declared above to satisfy effect ordering)
   const [callingPeer, setCallingPeer] = useState<Profile | null>(null); // The peer currently in a 1:1 call from this group context
-  const ringtoneRef = useRef<HTMLAudioElement | null>(null);
 
   const isAdmin = useMemo(
     () => members.some((m) => m.user_id === user?.id && m.role === "admin"),
