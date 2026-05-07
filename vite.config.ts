@@ -13,5 +13,8 @@ export default defineConfig({
   vite: {
     // Ensure Vite loads `.env` from this folder even if a wrapper changes `root`.
     envDir,
+    // Ensure Supabase keys are exposed to `import.meta.env` in the browser build.
+    // (Some wrapper configs may override envPrefix.)
+    envPrefix: ["VITE_", "SUPABASE_"],
   },
 });
