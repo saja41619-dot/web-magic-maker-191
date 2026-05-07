@@ -50,6 +50,7 @@ import { CallUI } from "@/components/CallUI";
 import { cn } from "@/lib/utils";
 import { NewGroupModal } from "./NewGroupModal";
 import { StatusBar } from "./StatusBar";
+import { WhatsAppFeaturesHub } from "./WhatsAppFeaturesHub";
 import {
   loadChatSettings,
   upsertChatSetting,
