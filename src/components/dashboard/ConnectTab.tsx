@@ -684,8 +684,14 @@ function ChatWindow({
 
   // Initialize CallManager only on client side
   const callManagerRef = useRef<CallManager | null>(null);
-  if (!callManagerRef.current && typeof window !== "undefined") {
-    callManagerRef.current = new CallManager();
+  useEffect(() => {
+    if (!callManagerRef.current && typeof window !== "undefined") {
+      callManagerRef.current = new CallManager();
+    }
+  }, []);
+
+  if (!callManagerRef.current) {
+    // Prevent undefined access during first render; listeners are attached in useEffect below
   }
   const callTimerRef = useRef<number | null>(null);
   const signalingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -909,8 +915,10 @@ function ChatWindow({
   const deleteMessage = async (msgId: string, forEveryone = false) => {
     try {
       if (forEveryone) {
-        await supabase.from("direct_messages");
-        update({ deleted_for_all: true, content: null, attachment_url: null }).eq("id", msgId);
+        await supabase
+          .from("direct_messages")
+          .update({ deleted_for_all: true, content: null, attachment_url: null })
+          .eq("id", msgId);
         setMessages((prev) =>
           prev.map((m) =>
             m.id === msgId
@@ -1533,7 +1541,7 @@ function ChatWindow({
           <div className="absolute bottom-full left-2 z-10 mb-2">
             <EmojiPicker
               theme={Theme.AUTO}
-              onEmojiClick={(e) => {
+              onEmojiClick={(e: { emoji: string }) => {
                 if (editingId) {
                   setEditingText((t) => t + e.emoji);
                 } else {
