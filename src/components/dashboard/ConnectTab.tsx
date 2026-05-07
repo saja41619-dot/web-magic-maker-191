@@ -144,6 +144,7 @@ export function ConnectTab() {
   const [activePeer, setActivePeer] = useState<Profile | null>(null);
   const [activeGroup, setActiveGroup] = useState<ChatGroup | null>(null);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
+  const [showFeaturesHub, setShowFeaturesHub] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSetting>>({});
