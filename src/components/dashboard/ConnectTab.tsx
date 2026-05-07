@@ -535,6 +535,8 @@ export function ConnectTab() {
             onGroupCreated={() => void loadData()}
           />
         )}
+
+        <WhatsAppFeaturesHub open={showFeaturesHub} onOpenChange={setShowFeaturesHub} />
       </div>
     </section>
   );
