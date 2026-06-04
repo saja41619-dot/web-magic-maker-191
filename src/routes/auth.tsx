@@ -26,6 +26,27 @@ const emailSchema = z.string().trim().email("Enter a valid email").max(255);
 
 type Tab = "signin" | "signup";
 
+const INVITE_KEY = "pending_invite_code";
+
+async function consumeInvite(userId: string) {
+  if (typeof window === "undefined") return;
+  const code = window.localStorage.getItem(INVITE_KEY);
+  if (!code) return;
+  window.localStorage.removeItem(INVITE_KEY);
+  const { data: inv } = await supabase
+    .from("user_invites")
+    .select("id, inviter_id, status, expires_at")
+    .eq("invite_code", code)
+    .maybeSingle();
+  if (!inv || inv.status !== "pending" || new Date(inv.expires_at) < new Date()) return;
+  if (inv.inviter_id === userId) return;
+  await supabase
+    .from("user_invites")
+    .update({ status: "accepted", accepted_by: userId, accepted_at: new Date().toISOString() })
+    .eq("id", inv.id);
+  toast.success("Invite accepted — you're now connected with your inviter.");
+}
+
 function AuthPage() {
   const { isAuthenticated, loading, signIn } = useAuth();
   const navigate = useNavigate();
@@ -36,10 +57,29 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
+  const [inviteCode, setInviteCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("invite");
+    if (code) {
+      window.localStorage.setItem(INVITE_KEY, code);
+      setInviteCode(code);
+      setTab("signup");
+    } else {
+      const stored = window.localStorage.getItem(INVITE_KEY);
+      if (stored) setInviteCode(stored);
+    }
+  }, []);
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      void navigate({ to: "/dashboard", replace: true });
+      void (async () => {
+        const { data } = await supabase.auth.getUser();
+        if (data.user) await consumeInvite(data.user.id);
+        void navigate({ to: "/dashboard", replace: true });
+      })();
     }
   }, [loading, isAuthenticated, navigate]);
 
