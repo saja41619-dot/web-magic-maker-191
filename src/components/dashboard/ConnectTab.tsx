@@ -40,6 +40,7 @@ import {
   Palette,
   VolumeX,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
