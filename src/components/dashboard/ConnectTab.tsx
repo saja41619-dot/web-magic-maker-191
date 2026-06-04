@@ -40,6 +40,7 @@ import {
   Palette,
   VolumeX,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
@@ -52,6 +53,7 @@ import { cn } from "@/lib/utils";
 import { NewGroupModal } from "./NewGroupModal";
 import { StatusBar } from "./StatusBar";
 import { WhatsAppFeaturesHub } from "./WhatsAppFeaturesHub";
+import { InviteUserModal } from "./InviteUserModal";
 import {
   loadChatSettings,
   upsertChatSetting,
@@ -146,6 +148,7 @@ export function ConnectTab() {
   const [activeGroup, setActiveGroup] = useState<ChatGroup | null>(null);
   const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
   const [showFeaturesHub, setShowFeaturesHub] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSetting>>({});
@@ -328,6 +331,14 @@ export function ConnectTab() {
                 aria-label="New group"
               >
                 <Users className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="wa-icon-btn"
+                title="Invite user"
+                aria-label="Invite user"
+              >
+                <UserPlus className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setShowFeaturesHub(true)}
@@ -537,6 +548,7 @@ export function ConnectTab() {
         )}
 
         <WhatsAppFeaturesHub open={showFeaturesHub} onOpenChange={setShowFeaturesHub} />
+        <InviteUserModal open={showInviteModal} onOpenChange={setShowInviteModal} />
       </div>
     </section>
   );
