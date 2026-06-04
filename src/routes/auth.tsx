@@ -168,6 +168,12 @@ function AuthPage() {
               : "Sign in to your account or create a new one."}
           </p>
 
+          {inviteCode && !forgotMode && (
+            <div className="mt-4 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
+              You were invited to join Connect. Sign up or sign in to accept the invite.
+            </div>
+          )}
+
           {!forgotMode && (
             <Tabs value={tab} onValueChange={(v) => switchTab(v as Tab)} className="mt-6">
               <TabsList className="grid w-full grid-cols-2">
