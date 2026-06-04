@@ -5,7 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { deleteAccount } from "@/server/account.functions";
+import { deleteAccount } from "@/lib/account.functions";
 import {
   AlertDialog,
   AlertDialogAction,
