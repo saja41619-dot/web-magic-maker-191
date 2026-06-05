@@ -239,11 +239,15 @@ export type Database = {
           expires_at: string | null
           forwarded: boolean
           id: string
+          is_broadcast: boolean
           poll_id: string | null
           read_at: string | null
           recipient_id: string
           reply_to_id: string | null
+          scheduled_for: string | null
           sender_id: string
+          view_once: boolean
+          view_once_opened_at: string | null
         }
         Insert: {
           attachment_name?: string | null
@@ -256,11 +260,15 @@ export type Database = {
           expires_at?: string | null
           forwarded?: boolean
           id?: string
+          is_broadcast?: boolean
           poll_id?: string | null
           read_at?: string | null
           recipient_id: string
           reply_to_id?: string | null
+          scheduled_for?: string | null
           sender_id: string
+          view_once?: boolean
+          view_once_opened_at?: string | null
         }
         Update: {
           attachment_name?: string | null
@@ -273,11 +281,15 @@ export type Database = {
           expires_at?: string | null
           forwarded?: boolean
           id?: string
+          is_broadcast?: boolean
           poll_id?: string | null
           read_at?: string | null
           recipient_id?: string
           reply_to_id?: string | null
+          scheduled_for?: string | null
           sender_id?: string
+          view_once?: boolean
+          view_once_opened_at?: string | null
         }
         Relationships: [
           {
@@ -375,7 +387,10 @@ export type Database = {
           id: string
           poll_id: string | null
           reply_to_id: string | null
+          scheduled_for: string | null
           sender_id: string
+          view_once: boolean
+          view_once_opened_at: string | null
         }
         Insert: {
           attachment_name?: string | null
@@ -391,7 +406,10 @@ export type Database = {
           id?: string
           poll_id?: string | null
           reply_to_id?: string | null
+          scheduled_for?: string | null
           sender_id: string
+          view_once?: boolean
+          view_once_opened_at?: string | null
         }
         Update: {
           attachment_name?: string | null
@@ -407,7 +425,10 @@ export type Database = {
           id?: string
           poll_id?: string | null
           reply_to_id?: string | null
+          scheduled_for?: string | null
           sender_id?: string
+          view_once?: boolean
+          view_once_opened_at?: string | null
         }
         Relationships: [
           {
