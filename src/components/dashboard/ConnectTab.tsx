@@ -1218,7 +1218,6 @@ function ChatWindow({
     setSending(true);
     try {
       const payload = {
-
         sender_id: user.id,
         recipient_id: peer.id,
         content: overrides?.attachment_url ? (overrides?.content ?? null) : content || null,
@@ -1226,10 +1225,12 @@ function ChatWindow({
         attachment_type: overrides?.attachment_type ?? null,
         attachment_name: overrides?.attachment_name ?? null,
         expires_at: expiresAtFromSeconds(chatSetting?.disappearing_seconds ?? null),
-      };
+        view_once: overrides?.view_once ?? viewOnceArmed,
+        scheduled_for: overrides?.scheduled_for ?? null,
+      } as Record<string, unknown>;
       const { data, error } = await supabase
         .from("direct_messages")
-        .insert(payload)
+        .insert(payload as never)
         .select()
         .single();
       if (error) throw error;
@@ -1237,9 +1238,27 @@ function ChatWindow({
         setMessages((prev) => (prev.some((x) => x.id === data.id) ? prev : [...prev, data as DM]));
       if (!overrides?.attachment_url) setText("");
       setShowEmoji(false);
+      setViewOnceArmed(false);
+      if (overrides?.scheduled_for) toast.success("Message scheduled");
     } finally {
       setSending(false);
     }
+  };
+
+  const sendGif = (url: string) => {
+    void sendMessage({ attachment_url: url, attachment_type: "gif", attachment_name: "gif" });
+  };
+
+  const sendSticker = (emoji: string) => {
+    void sendMessage({ content: emoji, attachment_type: "sticker", attachment_url: null, attachment_name: null });
+  };
+
+  const scheduleCurrent = (whenISO: string) => {
+    if (!text.trim()) {
+      toast.error("Type a message to schedule");
+      return;
+    }
+    void sendMessage({ scheduled_for: whenISO });
   };
 
   const uploadAndSend = async (file: File, type: "image" | "file" | "voice") => {
