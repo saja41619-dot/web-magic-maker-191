@@ -320,7 +320,7 @@ export function ConnectTab() {
       return b.ts.localeCompare(a.ts);
     });
     return visible;
-  }, [users, groups, search, chatSettings, lastMessages, showArchived]);
+  }, [users, groups, search, chatSettings, lastMessages, showArchived, unreadOnly, unread]);
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
