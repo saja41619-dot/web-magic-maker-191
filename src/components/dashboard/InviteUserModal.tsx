@@ -45,7 +45,7 @@ interface Props {
 
 export function InviteUserModal({ open, onOpenChange }: Props) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"link" | "email" | "pending">("link");
+  const [tab, setTab] = useState<"link" | "email">("link");
   const [linkCode, setLinkCode] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
   const [email, setEmail] = useState("");
