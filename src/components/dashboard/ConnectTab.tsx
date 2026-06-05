@@ -424,17 +424,32 @@ export function ConnectTab() {
           <StatusBar users={users} />
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center justify-between px-3 py-2 gap-2">
               <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
                 {showArchived ? "Archived" : "Recent Chats"}
               </h3>
-              <button
-                onClick={() => setShowArchived((v) => !v)}
-                className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground"
-              >
-                <Archive className="h-3 w-3" />
-                {showArchived ? "All" : "Archived"}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setUnreadOnly((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+                    unreadOnly
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary",
+                  )}
+                  title="Show only unread"
+                >
+                  <Filter className="h-3 w-3" />
+                  Unread
+                </button>
+                <button
+                  onClick={() => setShowArchived((v) => !v)}
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <Archive className="h-3 w-3" />
+                  {showArchived ? "All" : "Archived"}
+                </button>
+              </div>
             </div>
             {loading ? (
               <div className="flex justify-center p-6">
