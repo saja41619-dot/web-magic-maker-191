@@ -1,40 +1,74 @@
-## Connect → Invite User feature
+## Phased plan — Connect-il features nadappakkal
 
-Connect tab-il puthiya users-ne invite cheyyaan oru "Invite" option cheyyam — link share + email invite.
+88 features-um onnichu cheyyaan kazhiyilla (oru turn-il aakkam alla). **Category-by-category** approach edukaam. Total 9 phases.
 
-### UI changes (`ConnectTab.tsx`)
-- Sidebar header-il `UserPlus` icon button (Features Hub button-inte adutht).
-- Click cheytaal `InviteUserModal` thurakkum.
+### Already working in Connect (audit result)
 
-### New component: `src/components/dashboard/InviteUserModal.tsx`
-Three tabs / sections:
-1. **Invite Link** — User-inte unique invite link auto-generate cheyyum (`{origin}/auth?invite={code}`). Copy-to-clipboard + Web Share API ("Share via WhatsApp/Email/etc").
-2. **Email Invite** — Email input + optional personal message → server function vech invite ayakkum.
-3. **Pending Invites** — Current user ayachcha invites-inte list (email, status: pending/accepted, sent date, resend/revoke).
+ConnectTab.tsx (3,211 lines) + chatFeatures.ts-il ee features ipo real-aayi work cheyyunnund:
 
-### Database (`supabase--migration`)
-New table `public.user_invites`:
-- `id`, `inviter_id` (uuid → auth.users), `invite_code` (text unique), `email` (text, nullable for link-only), `message` (text), `status` (pending/accepted/revoked), `accepted_by` (uuid), `accepted_at`, `created_at`, `expires_at` (default now()+7d).
-- RLS: inviter can view/insert/update own rows; authenticated users can SELECT by `invite_code` (for accept flow).
-- GRANT to authenticated + service_role.
+- 1-to-1 chat, Group chat, Voice/Video calls (CallManager + WebRTC)
+- Reply, Forward, Edit, Delete for everyone, Reactions, Starred
+- Disappearing messages (per-chat seconds), Archive, Wallpapers
+- Polls (polls + poll_options + poll_votes tables)
+- Voice notes, Image/Video/File attachments, Typing indicators
+- Presence (online/last seen), Search messages, Draft saving
+- Group create + members, Broadcast (realtime channels)
 
-### Server function: `src/lib/invites.functions.ts`
-- `createInvite({ email?, message? })` — generates code, inserts row, (if email) sends invite email via Lovable AI / Resend stub → for now just stores row + returns link. Email sending UI-toggle mathram (no real SMTP unless connector added).
-- `listMyInvites()` — returns inviter's invites.
-- `revokeInvite({ id })` — marks revoked.
-- `acceptInvite({ code })` — called post-signup; marks accepted, optionally auto-creates DM between inviter and acceptor.
+### Phase order
 
-### Accept flow (`src/routes/auth.tsx`)
-- Read `?invite=<code>` from URL, store in localStorage before signup.
-- After successful signup/login, call `acceptInvite` → toast "Invited by <name>" + open Connect DM with inviter.
+1. **Messaging Features** (21) — *current phase*
+2. Media Sharing (12)
+3. Calling (9)
+4. Status (7)
+5. Community & Groups (9)
+6. Privacy & Security (14)
+7. Multi-Device (5)
+8. Customization (6)
+9. Channels (5)
 
-### Files to create / edit
-- `supabase/migrations/<ts>_user_invites.sql` (new)
-- `src/lib/invites.functions.ts` (new)
-- `src/components/dashboard/InviteUserModal.tsx` (new)
-- `src/components/dashboard/ConnectTab.tsx` (add button + modal mount)
-- `src/routes/auth.tsx` (capture + accept invite code)
+---
 
-### Out of scope (v1)
-- Real outgoing email delivery (UI shows "link copied / share" — email send-il visible toast mathram). Real SMTP/Resend connector pinneed cheyyaam.
-- Bulk CSV invite.
+## Phase 1 — Messaging Features (ee turn)
+
+Audit cheythappol 21-il **14 already work cheyyunnu**. Pani cheyyaanullath **7**:
+
+| # | Feature | Status | Plan |
+|---|---|---|---|
+| 1 | Broadcast message | Stub (channels mathram) | `broadcast_lists` table use cheythu broadcast send modal — owner-il ninnu multiple recipients-leku oro DM aayi insert |
+| 2 | View once photos/videos | Stub | `direct_messages.view_once boolean` column + opened-il auto-delete attachment |
+| 3 | Pin chats | Missing | `user_chat_settings.pinned boolean` (already-ulla table-il) + sidebar-il pinned-aayavar mukalil |
+| 4 | Unread filter | Missing | Sidebar-il "Unread" tab/chip — `unread[peerId] > 0` filter |
+| 5 | GIF support | Missing | Attachment menu-il GIF picker (Tenor API or simple emoji-picker-react GIF tab) |
+| 6 | Stickers | Missing | Sticker picker modal — preset sticker pack send as image attachment |
+| 7 | Scheduled messages | Stub | `direct_messages.scheduled_for timestamptz` + client poll/edge cron send-cheyyal |
+
+**Avatar stickers** (#8 in list) — Phase 8 (Customization)-il avatar create cheyyumpol cheyyam.
+
+### Technical changes (Phase 1)
+
+**DB migration:**
+- `ALTER TABLE direct_messages ADD COLUMN view_once boolean DEFAULT false, ADD COLUMN view_once_opened_at timestamptz, ADD COLUMN scheduled_for timestamptz`
+- `ALTER TABLE user_chat_settings ADD COLUMN pinned boolean DEFAULT false` (already exists check cheyyanam — illenkil add)
+- Same for `group_messages` (view_once, scheduled_for)
+
+**UI changes in `src/components/dashboard/ConnectTab.tsx`:**
+- Sidebar header: "Unread" filter chip + pin sort
+- Chat list item: long-press / context menu → "Pin chat"
+- Composer attachment menu: "GIF", "Sticker", "View once" toggle, "Schedule" picker
+- Bubble: view-once eye icon + open-once viewer
+
+**New files:**
+- `src/components/dashboard/BroadcastModal.tsx` — recipients select + send
+- `src/components/dashboard/GifPicker.tsx` — Tenor search (free tier) or curated set
+- `src/components/dashboard/StickerPicker.tsx` — preset packs
+- `src/components/dashboard/ScheduleMessageDialog.tsx` — datetime picker
+
+**Scheduled send mechanism:**
+Client-side: `setInterval` checking own scheduled_for messages every 30s and inserting real message at due time. Simple, works while at-least one device online. (Server cron later if needed.)
+
+**Out of scope (Phase 1):**
+Other 8 categories — those come in next turns.
+
+---
+
+Approve cheythaal Phase 1 build cheythu, pinne next phase confirm cheythu munnottu pokaam.
