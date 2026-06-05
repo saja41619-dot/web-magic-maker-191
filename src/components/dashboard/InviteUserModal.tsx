@@ -45,7 +45,7 @@ interface Props {
 
 export function InviteUserModal({ open, onOpenChange }: Props) {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"link" | "email" | "pending">("link");
+  const [tab, setTab] = useState<"link" | "email">("link");
   const [linkCode, setLinkCode] = useState<string | null>(null);
   const [linkLoading, setLinkLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -173,7 +173,6 @@ export function InviteUserModal({ open, onOpenChange }: Props) {
     void copyLink(code);
     setEmail("");
     setMessage("");
-    setTab("pending");
     void loadInvites();
   };
 
@@ -216,15 +215,12 @@ export function InviteUserModal({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="link">
               <Link2 className="mr-1.5 h-4 w-4" /> Link
             </TabsTrigger>
             <TabsTrigger value="email">
               <Mail className="mr-1.5 h-4 w-4" /> Email
-            </TabsTrigger>
-            <TabsTrigger value="pending">
-              Pending{invites.length ? ` (${invites.length})` : ""}
             </TabsTrigger>
           </TabsList>
 
@@ -307,60 +303,6 @@ export function InviteUserModal({ open, onOpenChange }: Props) {
             </p>
           </TabsContent>
 
-          <TabsContent value="pending" className="mt-4">
-            {loadingList ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : invites.length === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">No invites yet.</p>
-            ) : (
-              <ul className="max-h-80 space-y-2 overflow-y-auto">
-                {invites.map((inv) => (
-                  <li
-                    key={inv.id}
-                    className="flex items-center gap-2 rounded-md border border-border bg-card p-2.5"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {inv.email ?? "Shareable link"}
-                        </span>
-                        {statusBadge(inv)}
-                      </div>
-                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                        {new Date(inv.created_at).toLocaleDateString()} ·{" "}
-                        {buildInviteUrl(inv.invite_code)}
-                      </div>
-                    </div>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => copyLink(inv.invite_code)}
-                      title="Copy link"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    {inv.status === "pending" && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => revoke(inv.id)}
-                        title="Revoke"
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {inv.status === "accepted" && (
-                      <Check className="h-4 w-4 text-emerald-600" />
-                    )}
-                    {inv.status === "revoked" && <X className="h-4 w-4 text-muted-foreground" />}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </TabsContent>
         </Tabs>
       </DialogContent>
     </Dialog>
