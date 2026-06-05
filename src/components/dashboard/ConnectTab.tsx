@@ -1700,6 +1700,47 @@ function ChatWindow({
           </button>
           <button
             type="button"
+            onClick={() => setShowGifPicker(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="GIF"
+            title="GIF"
+          >
+            <Film className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowStickerPicker(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Sticker"
+            title="Sticker"
+          >
+            <StickerIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewOnceArmed((v) => !v)}
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
+              viewOnceArmed
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+            )}
+            aria-label="View once"
+            title={viewOnceArmed ? "View once: ON (next message)" : "View once"}
+          >
+            <Eye className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowScheduleDialog(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Schedule"
+            title="Schedule message"
+          >
+            <CalendarClock className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
             onClick={() => setShowDisappearingOptions(!showDisappearingOptions)}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
             aria-label="Disappearing"
