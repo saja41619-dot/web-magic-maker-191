@@ -214,96 +214,51 @@ export function InviteUserModal({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="link">
-              <Link2 className="mr-1.5 h-4 w-4" /> Link
-            </TabsTrigger>
-            <TabsTrigger value="email">
-              <Mail className="mr-1.5 h-4 w-4" /> Email
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="link" className="mt-4 space-y-3">
-            <Label>Your invite link</Label>
-            <div className="flex gap-2">
-              <Input
-                readOnly
-                value={linkCode ? buildInviteUrl(linkCode) : ""}
-                placeholder={linkLoading ? "Generating…" : ""}
-                onFocus={(e) => e.currentTarget.select()}
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={!linkCode}
-                onClick={() => linkCode && copyLink(linkCode)}
-                title="Copy"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-              <Button
-                size="icon"
-                disabled={!linkCode}
-                onClick={() => linkCode && shareLink(linkCode)}
-                title="Share"
-              >
-                <Share2 className="h-4 w-4" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Anyone with this link can sign up and connect with you directly.
-            </p>
+        <div className="mt-2 space-y-3">
+          <Label>Your invite link</Label>
+          <div className="flex gap-2">
+            <Input
+              readOnly
+              value={linkCode ? buildInviteUrl(linkCode) : ""}
+              placeholder={linkLoading ? "Generating…" : ""}
+              onFocus={(e) => e.currentTarget.select()}
+            />
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={regenerateLink}
-              disabled={linkLoading}
-              className="text-xs"
+              variant="outline"
+              size="icon"
+              disabled={!linkCode}
+              onClick={() => linkCode && copyLink(linkCode)}
+              title="Copy"
             >
-              {linkLoading ? (
-                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-1.5 h-3 w-3" />
-              )}
-              Generate new link
+              <Copy className="h-4 w-4" />
             </Button>
-          </TabsContent>
-
-          <TabsContent value="email" className="mt-4 space-y-3">
-            <div>
-              <Label htmlFor="invite-email">Email address</Label>
-              <Input
-                id="invite-email"
-                type="email"
-                placeholder="friend@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1.5"
-              />
-            </div>
-            <div>
-              <Label htmlFor="invite-msg">Personal message (optional)</Label>
-              <textarea
-                id="invite-msg"
-                rows={3}
-                placeholder="Join me on Connect…"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                className="mt-1.5 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </div>
-            <Button onClick={sendEmailInvite} disabled={sending} className="w-full">
-              {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create invite & copy link
+            <Button
+              size="icon"
+              disabled={!linkCode}
+              onClick={() => linkCode && shareLink(linkCode)}
+              title="Share"
+            >
+              <Share2 className="h-4 w-4" />
             </Button>
-            <p className="text-xs text-muted-foreground">
-              An invite record is created and the link is copied to your clipboard — share it via
-              WhatsApp, email, or any channel.
-            </p>
-          </TabsContent>
-
-        </Tabs>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Anyone with this link can sign up and connect with you directly.
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={regenerateLink}
+            disabled={linkLoading}
+            className="text-xs"
+          >
+            {linkLoading ? (
+              <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-1.5 h-3 w-3" />
+            )}
+            Generate new link
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
