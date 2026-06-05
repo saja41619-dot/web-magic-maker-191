@@ -1286,10 +1286,16 @@ function ChatWindow({
   };
 
   const filteredMessages = useMemo(() => {
-    if (!messageSearch.trim()) return messages;
+    const live = messages.filter((m) => !m.scheduled_for);
+    if (!messageSearch.trim()) return live;
     const q = messageSearch.trim().toLowerCase();
-    return messages.filter((m) => m.content?.toLowerCase().includes(q));
+    return live.filter((m) => m.content?.toLowerCase().includes(q));
   }, [messages, messageSearch]);
+
+  const scheduledMessages = useMemo(
+    () => messages.filter((m) => m.scheduled_for && m.sender_id === user?.id),
+    [messages, user?.id],
+  );
 
   const mediaMessages = useMemo(() => {
     return messages.filter((m) => m.attachment_type === "image");
