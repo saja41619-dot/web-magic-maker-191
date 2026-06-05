@@ -3391,3 +3391,59 @@ function VoicePlayer({ url, mine, speed = 1 }: { url: string; mine: boolean; spe
     </div>
   );
 }
+
+function ViewOnceMedia({ message, mine }: { message: DM; mine: boolean }) {
+  const [opened, setOpened] = useState(!!message.view_once_opened_at);
+  const [show, setShow] = useState(false);
+
+  const handleOpen = async () => {
+    if (opened) return;
+    setShow(true);
+    setOpened(true);
+    await supabase
+      .from("direct_messages")
+      .update({
+        view_once_opened_at: new Date().toISOString(),
+        attachment_url: null,
+        attachment_name: null,
+      } as never)
+      .eq("id", message.id);
+  };
+
+  if (opened && !show) {
+    return (
+      <div className="mb-1 flex items-center gap-2 rounded-md p-2 text-xs italic opacity-70" style={{ background: "rgba(0,0,0,0.04)" }}>
+        <Eye className="h-3.5 w-3.5" /> Opened
+      </div>
+    );
+  }
+
+  if (show && message.attachment_url) {
+    return (
+      <div className="mb-1 max-h-64 overflow-hidden rounded-md relative">
+        {message.attachment_type === "image" || message.attachment_type === "gif" ? (
+          <img src={message.attachment_url} alt="" className="max-h-64 object-cover" />
+        ) : (
+          <a href={message.attachment_url} target="_blank" rel="noreferrer" className="text-xs underline">
+            Open file
+          </a>
+        )}
+        <div className="absolute top-1 left-1 rounded-full bg-black/60 text-white px-2 py-0.5 text-[10px] flex items-center gap-1">
+          <Eye className="h-3 w-3" /> View once
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleOpen}
+      disabled={mine}
+      className="mb-1 flex items-center gap-2 rounded-md p-3 text-xs font-medium hover:bg-black/5 disabled:opacity-60"
+      style={{ background: "rgba(0,0,0,0.04)" }}
+    >
+      <Eye className="h-4 w-4" />
+      {mine ? "View-once photo (recipient only)" : "Tap to view once"}
+    </button>
+  );
+}
