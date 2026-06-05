@@ -261,6 +261,31 @@ export function ConnectTab() {
     };
   }, [user, activePeer]);
 
+  // Scheduled message dispatcher — periodically promotes own scheduled DMs
+  // whose scheduled_for has passed by clearing the flag and bumping created_at.
+  useEffect(() => {
+    if (!user) return;
+    const tick = async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from("direct_messages")
+        .select("id")
+        .eq("sender_id", user.id)
+        .not("scheduled_for", "is", null)
+        .lte("scheduled_for", nowIso);
+      const rows = (data ?? []) as { id: string }[];
+      for (const r of rows) {
+        await supabase
+          .from("direct_messages")
+          .update({ scheduled_for: null, created_at: new Date().toISOString() } as never)
+          .eq("id", r.id);
+      }
+    };
+    void tick();
+    const i = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(i);
+  }, [user]);
+
   const sidebarItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     type Item =
