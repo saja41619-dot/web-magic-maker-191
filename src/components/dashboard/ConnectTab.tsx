@@ -614,6 +614,7 @@ export function ConnectTab() {
 
         <WhatsAppFeaturesHub open={showFeaturesHub} onOpenChange={setShowFeaturesHub} />
         <InviteUserModal open={showInviteModal} onOpenChange={setShowInviteModal} />
+        <BroadcastModal open={showBroadcastModal} onOpenChange={setShowBroadcastModal} users={users} />
       </div>
     </section>
   );
