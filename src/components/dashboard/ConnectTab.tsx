@@ -375,6 +375,14 @@ export function ConnectTab() {
                 <Users className="h-5 w-5" />
               </button>
               <button
+                onClick={() => setShowBroadcastModal(true)}
+                className="wa-icon-btn"
+                title="New broadcast"
+                aria-label="New broadcast"
+              >
+                <Megaphone className="h-5 w-5" />
+              </button>
+              <button
                 onClick={() => setShowInviteModal(true)}
                 className="wa-icon-btn"
                 title="Invite user"
