@@ -41,6 +41,12 @@ import {
   VolumeX,
   Sparkles,
   UserPlus,
+  Megaphone,
+  Eye,
+  CalendarClock,
+  Sticker as StickerIcon,
+  Film,
+  Filter,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
@@ -54,6 +60,10 @@ import { NewGroupModal } from "./NewGroupModal";
 import { StatusBar } from "./StatusBar";
 import { WhatsAppFeaturesHub } from "./WhatsAppFeaturesHub";
 import { InviteUserModal } from "./InviteUserModal";
+import { BroadcastModal } from "./BroadcastModal";
+import { GifPicker } from "./GifPicker";
+import { StickerPicker } from "./StickerPicker";
+import { ScheduleMessageDialog } from "./ScheduleMessageDialog";
 import {
   loadChatSettings,
   upsertChatSetting,
@@ -80,7 +90,7 @@ interface DM {
   recipient_id: string;
   content: string | null;
   attachment_url: string | null;
-  attachment_type: "image" | "file" | "voice" | null;
+  attachment_type: "image" | "file" | "voice" | "video" | "gif" | "sticker" | null;
   attachment_name: string | null;
   created_at: string;
   read_at: string | null;
@@ -91,6 +101,10 @@ interface DM {
   disappear_at?: string | null;
   deleted_for_all?: boolean;
   forwarded?: boolean;
+  view_once?: boolean;
+  view_once_opened_at?: string | null;
+  scheduled_for?: string | null;
+  is_broadcast?: boolean;
 }
 
 interface Presence {
@@ -149,6 +163,8 @@ export function ConnectTab() {
   const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
   const [showFeaturesHub, setShowFeaturesHub] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSetting>>({});
@@ -245,6 +261,31 @@ export function ConnectTab() {
     };
   }, [user, activePeer]);
 
+  // Scheduled message dispatcher — periodically promotes own scheduled DMs
+  // whose scheduled_for has passed by clearing the flag and bumping created_at.
+  useEffect(() => {
+    if (!user) return;
+    const tick = async () => {
+      const nowIso = new Date().toISOString();
+      const { data } = await supabase
+        .from("direct_messages")
+        .select("id")
+        .eq("sender_id", user.id)
+        .not("scheduled_for", "is", null)
+        .lte("scheduled_for", nowIso);
+      const rows = (data ?? []) as { id: string }[];
+      for (const r of rows) {
+        await supabase
+          .from("direct_messages")
+          .update({ scheduled_for: null, created_at: new Date().toISOString() } as never)
+          .eq("id", r.id);
+      }
+    };
+    void tick();
+    const i = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(i);
+  }, [user]);
+
   const sidebarItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     type Item =
@@ -267,6 +308,7 @@ export function ConnectTab() {
     const visible = combined.filter((item) => {
       const isArch = item.setting?.archived ?? false;
       if (showArchived !== isArch) return false;
+      if (unreadOnly && item.type === "direct" && (unread[item.data.id] ?? 0) === 0) return false;
       if (!q) return true;
       const name = item.type === "direct" ? item.data.display_name : item.data.name;
       return (name ?? "").toLowerCase().includes(q);
@@ -278,7 +320,7 @@ export function ConnectTab() {
       return b.ts.localeCompare(a.ts);
     });
     return visible;
-  }, [users, groups, search, chatSettings, lastMessages, showArchived]);
+  }, [users, groups, search, chatSettings, lastMessages, showArchived, unreadOnly, unread]);
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -333,6 +375,14 @@ export function ConnectTab() {
                 <Users className="h-5 w-5" />
               </button>
               <button
+                onClick={() => setShowBroadcastModal(true)}
+                className="wa-icon-btn"
+                title="New broadcast"
+                aria-label="New broadcast"
+              >
+                <Megaphone className="h-5 w-5" />
+              </button>
+              <button
                 onClick={() => setShowInviteModal(true)}
                 className="wa-icon-btn"
                 title="Invite user"
@@ -374,17 +424,32 @@ export function ConnectTab() {
           <StatusBar users={users} />
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
-            <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center justify-between px-3 py-2 gap-2">
               <h3 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
                 {showArchived ? "Archived" : "Recent Chats"}
               </h3>
-              <button
-                onClick={() => setShowArchived((v) => !v)}
-                className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground"
-              >
-                <Archive className="h-3 w-3" />
-                {showArchived ? "All" : "Archived"}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setUnreadOnly((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+                    unreadOnly
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary",
+                  )}
+                  title="Show only unread"
+                >
+                  <Filter className="h-3 w-3" />
+                  Unread
+                </button>
+                <button
+                  onClick={() => setShowArchived((v) => !v)}
+                  className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <Archive className="h-3 w-3" />
+                  {showArchived ? "All" : "Archived"}
+                </button>
+              </div>
             </div>
             {loading ? (
               <div className="flex justify-center p-6">
@@ -549,6 +614,7 @@ export function ConnectTab() {
 
         <WhatsAppFeaturesHub open={showFeaturesHub} onOpenChange={setShowFeaturesHub} />
         <InviteUserModal open={showInviteModal} onOpenChange={setShowInviteModal} />
+        <BroadcastModal open={showBroadcastModal} onOpenChange={setShowBroadcastModal} users={users} />
       </div>
     </section>
   );
@@ -692,6 +758,10 @@ function ChatWindow({
   const [forwardingMessage, setForwardingMessage] = useState<DM | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const [showDisappearingOptions, setShowDisappearingOptions] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [viewOnceArmed, setViewOnceArmed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1148,7 +1218,6 @@ function ChatWindow({
     setSending(true);
     try {
       const payload = {
-
         sender_id: user.id,
         recipient_id: peer.id,
         content: overrides?.attachment_url ? (overrides?.content ?? null) : content || null,
@@ -1156,10 +1225,12 @@ function ChatWindow({
         attachment_type: overrides?.attachment_type ?? null,
         attachment_name: overrides?.attachment_name ?? null,
         expires_at: expiresAtFromSeconds(chatSetting?.disappearing_seconds ?? null),
-      };
+        view_once: overrides?.view_once ?? viewOnceArmed,
+        scheduled_for: overrides?.scheduled_for ?? null,
+      } as Record<string, unknown>;
       const { data, error } = await supabase
         .from("direct_messages")
-        .insert(payload)
+        .insert(payload as never)
         .select()
         .single();
       if (error) throw error;
@@ -1167,9 +1238,27 @@ function ChatWindow({
         setMessages((prev) => (prev.some((x) => x.id === data.id) ? prev : [...prev, data as DM]));
       if (!overrides?.attachment_url) setText("");
       setShowEmoji(false);
+      setViewOnceArmed(false);
+      if (overrides?.scheduled_for) toast.success("Message scheduled");
     } finally {
       setSending(false);
     }
+  };
+
+  const sendGif = (url: string) => {
+    void sendMessage({ attachment_url: url, attachment_type: "gif", attachment_name: "gif" });
+  };
+
+  const sendSticker = (emoji: string) => {
+    void sendMessage({ content: emoji, attachment_type: "sticker", attachment_url: null, attachment_name: null });
+  };
+
+  const scheduleCurrent = (whenISO: string) => {
+    if (!text.trim()) {
+      toast.error("Type a message to schedule");
+      return;
+    }
+    void sendMessage({ scheduled_for: whenISO });
   };
 
   const uploadAndSend = async (file: File, type: "image" | "file" | "voice") => {
@@ -1197,10 +1286,16 @@ function ChatWindow({
   };
 
   const filteredMessages = useMemo(() => {
-    if (!messageSearch.trim()) return messages;
+    const live = messages.filter((m) => !m.scheduled_for);
+    if (!messageSearch.trim()) return live;
     const q = messageSearch.trim().toLowerCase();
-    return messages.filter((m) => m.content?.toLowerCase().includes(q));
+    return live.filter((m) => m.content?.toLowerCase().includes(q));
   }, [messages, messageSearch]);
+
+  const scheduledMessages = useMemo(
+    () => messages.filter((m) => m.scheduled_for && m.sender_id === user?.id),
+    [messages, user?.id],
+  );
 
   const mediaMessages = useMemo(() => {
     return messages.filter((m) => m.attachment_type === "image");
@@ -1605,6 +1700,47 @@ function ChatWindow({
           </button>
           <button
             type="button"
+            onClick={() => setShowGifPicker(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="GIF"
+            title="GIF"
+          >
+            <Film className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowStickerPicker(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Sticker"
+            title="Sticker"
+          >
+            <StickerIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewOnceArmed((v) => !v)}
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
+              viewOnceArmed
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+            )}
+            aria-label="View once"
+            title={viewOnceArmed ? "View once: ON (next message)" : "View once"}
+          >
+            <Eye className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowScheduleDialog(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Schedule"
+            title="Schedule message"
+          >
+            <CalendarClock className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
             onClick={() => setShowDisappearingOptions(!showDisappearingOptions)}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
             aria-label="Disappearing"
@@ -1787,6 +1923,21 @@ function ChatWindow({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      <GifPicker open={showGifPicker} onOpenChange={setShowGifPicker} onPick={sendGif} />
+      <StickerPicker open={showStickerPicker} onOpenChange={setShowStickerPicker} onPick={sendSticker} />
+      <ScheduleMessageDialog
+        open={showScheduleDialog}
+        onOpenChange={setShowScheduleDialog}
+        onSchedule={scheduleCurrent}
+      />
+
+      {scheduledMessages.length > 0 && (
+        <div className="fixed bottom-24 right-4 z-30 rounded-full bg-primary text-primary-foreground shadow-elegant px-3 py-1.5 text-xs flex items-center gap-1.5">
+          <CalendarClock className="h-3.5 w-3.5" />
+          {scheduledMessages.length} scheduled
         </div>
       )}
     </>
@@ -2875,29 +3026,60 @@ function MessageItem({
               <Pin className="h-3 w-3" /> Pinned
             </div>
           )}
-          {message.attachment_type === "image" && message.attachment_url && (
-            <a href={message.attachment_url} target="_blank" rel="noreferrer">
-              <img
-                src={message.attachment_url}
-                alt={message.attachment_name ?? "image"}
-                className="mb-1 max-h-64 rounded-md object-cover hover:opacity-95 transition-opacity"
-              />
-            </a>
+          {message.is_broadcast && (
+            <div className="flex items-center gap-1 mb-1 text-[10px] wa-text-muted">
+              <Megaphone className="h-3 w-3" /> Broadcast
+            </div>
           )}
-          {message.attachment_type === "voice" && message.attachment_url && (
-            <VoicePlayer url={message.attachment_url} mine={mine} speed={voiceSpeed} />
+          {message.view_once && message.attachment_url ? (
+            <ViewOnceMedia message={message} mine={mine} />
+          ) : (
+            <>
+              {message.attachment_type === "image" && message.attachment_url && (
+                <a href={message.attachment_url} target="_blank" rel="noreferrer">
+                  <img
+                    src={message.attachment_url}
+                    alt={message.attachment_name ?? "image"}
+                    className="mb-1 max-h-64 rounded-md object-cover hover:opacity-95 transition-opacity"
+                  />
+                </a>
+              )}
+              {message.attachment_type === "gif" && message.attachment_url && (
+                <img
+                  src={message.attachment_url}
+                  alt="gif"
+                  className="mb-1 max-h-64 rounded-md object-cover"
+                />
+              )}
+              {message.attachment_type === "voice" && message.attachment_url && (
+                <VoicePlayer url={message.attachment_url} mine={mine} speed={voiceSpeed} />
+              )}
+              {message.attachment_type === "file" && message.attachment_url && (
+                <a
+                  href={message.attachment_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mb-1 flex items-center gap-2 rounded-md p-2 underline-offset-2 hover:underline"
+                  style={{ background: "rgba(0,0,0,0.04)" }}
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="truncate">{message.attachment_name ?? "File"}</span>
+                </a>
+              )}
+            </>
           )}
-          {message.attachment_type === "file" && message.attachment_url && (
-            <a
-              href={message.attachment_url}
-              target="_blank"
-              rel="noreferrer"
-              className="mb-1 flex items-center gap-2 rounded-md p-2 underline-offset-2 hover:underline"
-              style={{ background: "rgba(0,0,0,0.04)" }}
-            >
-              <FileText className="h-4 w-4" />
-              <span className="truncate">{message.attachment_name ?? "File"}</span>
-            </a>
+          {message.attachment_type === "sticker" && message.content ? (
+            <p className="text-6xl leading-none my-1">{message.content}</p>
+          ) : message.content && (
+            <div className="flex flex-col">
+              {isForwarded && (
+                <div className="flex items-center gap-1 opacity-60 mb-1 wa-text-muted">
+                  <Forward className="h-3 w-3" />
+                  <span className="text-[10px] italic font-medium">Forwarded</span>
+                </div>
+              )}
+              <p className="whitespace-pre-wrap break-words">{displayContent}</p>
+            </div>
           )}
           {message.content && (
             <div className="flex flex-col">
@@ -3207,5 +3389,61 @@ function VoicePlayer({ url, mine, speed = 1 }: { url: string; mine: boolean; spe
         className="hidden"
       />
     </div>
+  );
+}
+
+function ViewOnceMedia({ message, mine }: { message: DM; mine: boolean }) {
+  const [opened, setOpened] = useState(!!message.view_once_opened_at);
+  const [show, setShow] = useState(false);
+
+  const handleOpen = async () => {
+    if (opened) return;
+    setShow(true);
+    setOpened(true);
+    await supabase
+      .from("direct_messages")
+      .update({
+        view_once_opened_at: new Date().toISOString(),
+        attachment_url: null,
+        attachment_name: null,
+      } as never)
+      .eq("id", message.id);
+  };
+
+  if (opened && !show) {
+    return (
+      <div className="mb-1 flex items-center gap-2 rounded-md p-2 text-xs italic opacity-70" style={{ background: "rgba(0,0,0,0.04)" }}>
+        <Eye className="h-3.5 w-3.5" /> Opened
+      </div>
+    );
+  }
+
+  if (show && message.attachment_url) {
+    return (
+      <div className="mb-1 max-h-64 overflow-hidden rounded-md relative">
+        {message.attachment_type === "image" || message.attachment_type === "gif" ? (
+          <img src={message.attachment_url} alt="" className="max-h-64 object-cover" />
+        ) : (
+          <a href={message.attachment_url} target="_blank" rel="noreferrer" className="text-xs underline">
+            Open file
+          </a>
+        )}
+        <div className="absolute top-1 left-1 rounded-full bg-black/60 text-white px-2 py-0.5 text-[10px] flex items-center gap-1">
+          <Eye className="h-3 w-3" /> View once
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleOpen}
+      disabled={mine}
+      className="mb-1 flex items-center gap-2 rounded-md p-3 text-xs font-medium hover:bg-black/5 disabled:opacity-60"
+      style={{ background: "rgba(0,0,0,0.04)" }}
+    >
+      <Eye className="h-4 w-4" />
+      {mine ? "View-once photo (recipient only)" : "Tap to view once"}
+    </button>
   );
 }
