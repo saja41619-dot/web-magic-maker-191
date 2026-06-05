@@ -3026,29 +3026,60 @@ function MessageItem({
               <Pin className="h-3 w-3" /> Pinned
             </div>
           )}
-          {message.attachment_type === "image" && message.attachment_url && (
-            <a href={message.attachment_url} target="_blank" rel="noreferrer">
-              <img
-                src={message.attachment_url}
-                alt={message.attachment_name ?? "image"}
-                className="mb-1 max-h-64 rounded-md object-cover hover:opacity-95 transition-opacity"
-              />
-            </a>
+          {message.is_broadcast && (
+            <div className="flex items-center gap-1 mb-1 text-[10px] wa-text-muted">
+              <Megaphone className="h-3 w-3" /> Broadcast
+            </div>
           )}
-          {message.attachment_type === "voice" && message.attachment_url && (
-            <VoicePlayer url={message.attachment_url} mine={mine} speed={voiceSpeed} />
+          {message.view_once && message.attachment_url ? (
+            <ViewOnceMedia message={message} mine={mine} />
+          ) : (
+            <>
+              {message.attachment_type === "image" && message.attachment_url && (
+                <a href={message.attachment_url} target="_blank" rel="noreferrer">
+                  <img
+                    src={message.attachment_url}
+                    alt={message.attachment_name ?? "image"}
+                    className="mb-1 max-h-64 rounded-md object-cover hover:opacity-95 transition-opacity"
+                  />
+                </a>
+              )}
+              {message.attachment_type === "gif" && message.attachment_url && (
+                <img
+                  src={message.attachment_url}
+                  alt="gif"
+                  className="mb-1 max-h-64 rounded-md object-cover"
+                />
+              )}
+              {message.attachment_type === "voice" && message.attachment_url && (
+                <VoicePlayer url={message.attachment_url} mine={mine} speed={voiceSpeed} />
+              )}
+              {message.attachment_type === "file" && message.attachment_url && (
+                <a
+                  href={message.attachment_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mb-1 flex items-center gap-2 rounded-md p-2 underline-offset-2 hover:underline"
+                  style={{ background: "rgba(0,0,0,0.04)" }}
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="truncate">{message.attachment_name ?? "File"}</span>
+                </a>
+              )}
+            </>
           )}
-          {message.attachment_type === "file" && message.attachment_url && (
-            <a
-              href={message.attachment_url}
-              target="_blank"
-              rel="noreferrer"
-              className="mb-1 flex items-center gap-2 rounded-md p-2 underline-offset-2 hover:underline"
-              style={{ background: "rgba(0,0,0,0.04)" }}
-            >
-              <FileText className="h-4 w-4" />
-              <span className="truncate">{message.attachment_name ?? "File"}</span>
-            </a>
+          {message.attachment_type === "sticker" && message.content ? (
+            <p className="text-6xl leading-none my-1">{message.content}</p>
+          ) : message.content && (
+            <div className="flex flex-col">
+              {isForwarded && (
+                <div className="flex items-center gap-1 opacity-60 mb-1 wa-text-muted">
+                  <Forward className="h-3 w-3" />
+                  <span className="text-[10px] italic font-medium">Forwarded</span>
+                </div>
+              )}
+              <p className="whitespace-pre-wrap break-words">{displayContent}</p>
+            </div>
           )}
           {message.content && (
             <div className="flex flex-col">
