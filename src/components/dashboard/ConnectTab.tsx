@@ -41,6 +41,12 @@ import {
   VolumeX,
   Sparkles,
   UserPlus,
+  Megaphone,
+  Eye,
+  CalendarClock,
+  Sticker as StickerIcon,
+  Film,
+  Filter,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
