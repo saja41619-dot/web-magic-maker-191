@@ -80,7 +80,7 @@ interface DM {
   recipient_id: string;
   content: string | null;
   attachment_url: string | null;
-  attachment_type: "image" | "file" | "voice" | null;
+  attachment_type: "image" | "file" | "voice" | "video" | "gif" | "sticker" | null;
   attachment_name: string | null;
   created_at: string;
   read_at: string | null;
@@ -91,6 +91,10 @@ interface DM {
   disappear_at?: string | null;
   deleted_for_all?: boolean;
   forwarded?: boolean;
+  view_once?: boolean;
+  view_once_opened_at?: string | null;
+  scheduled_for?: string | null;
+  is_broadcast?: boolean;
 }
 
 interface Presence {
