@@ -173,7 +173,6 @@ export function InviteUserModal({ open, onOpenChange }: Props) {
     void copyLink(code);
     setEmail("");
     setMessage("");
-    setTab("pending");
     void loadInvites();
   };
 
