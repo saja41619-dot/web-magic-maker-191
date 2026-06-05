@@ -163,6 +163,8 @@ export function ConnectTab() {
   const [showNewGroupModal, setShowNewGroupModal] = useState(false); // State for new group modal
   const [showFeaturesHub, setShowFeaturesHub] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [chatSettings, setChatSettings] = useState<Record<string, ChatSetting>>({});
