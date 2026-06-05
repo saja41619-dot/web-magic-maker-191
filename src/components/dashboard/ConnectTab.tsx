@@ -308,6 +308,7 @@ export function ConnectTab() {
     const visible = combined.filter((item) => {
       const isArch = item.setting?.archived ?? false;
       if (showArchived !== isArch) return false;
+      if (unreadOnly && item.type === "direct" && (unread[item.data.id] ?? 0) === 0) return false;
       if (!q) return true;
       const name = item.type === "direct" ? item.data.display_name : item.data.name;
       return (name ?? "").toLowerCase().includes(q);
