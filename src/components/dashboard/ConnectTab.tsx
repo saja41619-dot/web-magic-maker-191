@@ -758,6 +758,10 @@ function ChatWindow({
   const [forwardingMessage, setForwardingMessage] = useState<DM | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
   const [showDisappearingOptions, setShowDisappearingOptions] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [viewOnceArmed, setViewOnceArmed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
