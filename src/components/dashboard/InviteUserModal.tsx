@@ -216,15 +216,12 @@ export function InviteUserModal({ open, onOpenChange }: Props) {
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="link">
               <Link2 className="mr-1.5 h-4 w-4" /> Link
             </TabsTrigger>
             <TabsTrigger value="email">
               <Mail className="mr-1.5 h-4 w-4" /> Email
-            </TabsTrigger>
-            <TabsTrigger value="pending">
-              Pending{invites.length ? ` (${invites.length})` : ""}
             </TabsTrigger>
           </TabsList>
 
