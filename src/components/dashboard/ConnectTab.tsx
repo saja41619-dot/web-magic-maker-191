@@ -47,6 +47,10 @@ import {
   Sticker as StickerIcon,
   Film,
   Filter,
+  MapPin,
+  Contact as ContactIcon,
+  Radio,
+  MonitorUp,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
@@ -90,7 +94,7 @@ interface DM {
   recipient_id: string;
   content: string | null;
   attachment_url: string | null;
-  attachment_type: "image" | "file" | "voice" | "video" | "gif" | "sticker" | null;
+  attachment_type: "image" | "file" | "voice" | "video" | "gif" | "sticker" | "contact" | "location" | "live_location" | null;
   attachment_name: string | null;
   created_at: string;
   read_at: string | null;
@@ -105,6 +109,7 @@ interface DM {
   view_once_opened_at?: string | null;
   scheduled_for?: string | null;
   is_broadcast?: boolean;
+  live_location_until?: string | null;
 }
 
 interface Presence {
@@ -762,6 +767,10 @@ function ChatWindow({
   const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [viewOnceArmed, setViewOnceArmed] = useState(false);
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [showLiveLocationMenu, setShowLiveLocationMenu] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const liveLocationRef = useRef<{ messageId: string; watchId: number; until: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -1227,6 +1236,7 @@ function ChatWindow({
         expires_at: expiresAtFromSeconds(chatSetting?.disappearing_seconds ?? null),
         view_once: overrides?.view_once ?? viewOnceArmed,
         scheduled_for: overrides?.scheduled_for ?? null,
+        live_location_until: overrides?.live_location_until ?? null,
       } as Record<string, unknown>;
       const { data, error } = await supabase
         .from("direct_messages")
@@ -1261,7 +1271,7 @@ function ChatWindow({
     void sendMessage({ scheduled_for: whenISO });
   };
 
-  const uploadAndSend = async (file: File, type: "image" | "file" | "voice") => {
+  const uploadAndSend = async (file: File, type: "image" | "file" | "voice" | "video") => {
     if (!user) return;
     setSending(true);
     try {
@@ -1282,6 +1292,134 @@ function ChatWindow({
       });
     } finally {
       setSending(false);
+    }
+  };
+
+  // ---- Phase 2: Media sharing helpers ----
+  const sendContact = (p: Profile) => {
+    void sendMessage({
+      attachment_type: "contact",
+      content: JSON.stringify({ userId: p.id, name: p.display_name, avatarUrl: p.avatar_url }),
+    });
+    setShowContactPicker(false);
+  };
+
+  const sendLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation not supported");
+      return;
+    }
+    toast.info("Getting location…");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        void sendMessage({
+          attachment_type: "location",
+          content: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        });
+      },
+      (err) => toast.error("Location error: " + err.message),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  const startLiveLocation = async (minutes: number) => {
+    if (!navigator.geolocation || !user) {
+      toast.error("Geolocation not supported");
+      return;
+    }
+    const until = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const content = JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        // Insert initial live_location row directly so we have its id
+        const { data, error } = await supabase
+          .from("direct_messages")
+          .insert({
+            sender_id: user.id,
+            recipient_id: peer.id,
+            content,
+            attachment_type: "live_location",
+            live_location_until: until,
+          } as never)
+          .select()
+          .single();
+        if (error) {
+          toast.error("Could not start live location");
+          return;
+        }
+        if (data) setMessages((prev) => [...prev, data as DM]);
+        liveLocationRef.current = {
+          messageId: (data as DM).id,
+          watchId: navigator.geolocation.watchPosition(
+            async (p2) => {
+              if (!liveLocationRef.current) return;
+              if (new Date(until).getTime() < Date.now()) {
+                stopLiveLocation();
+                return;
+              }
+              await supabase
+                .from("direct_messages")
+                .update({
+                  content: JSON.stringify({ lat: p2.coords.latitude, lng: p2.coords.longitude }),
+                } as never)
+                .eq("id", liveLocationRef.current.messageId);
+            },
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 5000 },
+          ),
+          until,
+        };
+        toast.success(`Sharing live location for ${minutes} min`);
+      },
+      (err) => toast.error("Location error: " + err.message),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+    setShowLiveLocationMenu(false);
+  };
+
+  const stopLiveLocation = () => {
+    if (liveLocationRef.current) {
+      navigator.geolocation.clearWatch(liveLocationRef.current.watchId);
+      void supabase
+        .from("direct_messages")
+        .update({ live_location_until: new Date().toISOString() } as never)
+        .eq("id", liveLocationRef.current.messageId);
+      liveLocationRef.current = null;
+      toast.success("Live location stopped");
+    }
+  };
+
+  const startScreenShare = async () => {
+    if (!signalingChannelRef.current) {
+      toast.error("Open a chat first");
+      return;
+    }
+    try {
+      const display = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      // Replace video track on existing call if active, else start a video call seeded with screen
+      setCallType("video");
+      const cm = callManagerRef.current!;
+      await cm.requestMediaAccess(false, false); // ensure peer connection lifecycle
+      const offer = await cm.initiateCall("video");
+      // Swap to screen tracks
+      const pc = (cm as unknown as { peerConnection: RTCPeerConnection | null }).peerConnection;
+      if (pc) {
+        const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+        const screenTrack = display.getVideoTracks()[0];
+        if (sender && screenTrack) await sender.replaceTrack(screenTrack);
+        screenTrack.addEventListener("ended", () => {
+          toast.info("Screen share ended");
+        });
+      }
+      setLocalStream(display);
+      signalingChannelRef.current.send({
+        type: "broadcast",
+        event: "call-offer",
+        payload: { offer, callType: "video" },
+      });
+      toast.success("Screen sharing started");
+    } catch (err) {
+      toast.error("Screen share failed: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -1747,6 +1885,77 @@ function ChatWindow({
           >
             <Timer className="h-5 w-5" />
           </button>
+
+          {/* Phase 2: media sharing */}
+          <button
+            type="button"
+            onClick={() => videoInputRef.current?.click()}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Video"
+            title="Send HD video"
+          >
+            <VideoIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowContactPicker(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Share contact"
+            title="Share a contact"
+          >
+            <ContactIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={sendLocation}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Share location"
+            title="Share location"
+          >
+            <MapPin className="h-5 w-5" />
+          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                if (liveLocationRef.current) stopLiveLocation();
+                else setShowLiveLocationMenu((v) => !v);
+              }}
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
+                liveLocationRef.current
+                  ? "bg-destructive text-destructive-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
+              aria-label="Live location"
+              title={liveLocationRef.current ? "Stop live location" : "Share live location"}
+            >
+              <Radio className="h-5 w-5" />
+            </button>
+            {showLiveLocationMenu && !liveLocationRef.current && (
+              <div className="absolute bottom-12 left-0 z-20 w-44 rounded-md border border-border bg-card p-1 shadow-lg">
+                {[15, 60, 480].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => startLiveLocation(m)}
+                    className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-secondary"
+                  >
+                    Share for {m >= 60 ? `${m / 60} h` : `${m} min`}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={startScreenShare}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Screen share"
+            title="Share your screen"
+          >
+            <MonitorUp className="h-5 w-5" />
+          </button>
+
           <input
             ref={imageInputRef}
             type="file"
@@ -1755,6 +1964,17 @@ function ChatWindow({
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void uploadAndSend(f, "image");
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void uploadAndSend(f, "video");
               e.target.value = "";
             }}
           />
@@ -1768,6 +1988,7 @@ function ChatWindow({
               e.target.value = "";
             }}
           />
+
 
           <textarea
             value={editingId ? editingText : text}
@@ -1933,6 +2154,42 @@ function ChatWindow({
         onOpenChange={setShowScheduleDialog}
         onSchedule={scheduleCurrent}
       />
+
+      {showContactPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowContactPicker(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-card p-4 shadow-elegant"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-semibold">Share a contact</h3>
+              <button onClick={() => setShowContactPicker(false)} className="text-muted-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {allUsers.map((u: Profile) => (
+                <button
+                  key={u.id}
+                  onClick={() => sendContact(u)}
+                  className="flex w-full items-center gap-3 rounded-md p-2 text-left hover:bg-secondary"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground text-sm font-semibold">
+                    {(u.display_name ?? "U").charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm">{u.display_name ?? "User"}</span>
+                </button>
+              ))}
+              {allUsers.length === 0 && (
+                <p className="p-4 text-center text-sm text-muted-foreground">No contacts to share</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {scheduledMessages.length > 0 && (
         <div className="fixed bottom-24 right-4 z-30 rounded-full bg-primary text-primary-foreground shadow-elegant px-3 py-1.5 text-xs flex items-center gap-1.5">
@@ -3066,22 +3323,64 @@ function MessageItem({
                   <span className="truncate">{message.attachment_name ?? "File"}</span>
                 </a>
               )}
+              {message.attachment_type === "video" && message.attachment_url && (
+                <video
+                  src={message.attachment_url}
+                  controls
+                  playsInline
+                  className="mb-1 max-h-72 rounded-md bg-black"
+                />
+              )}
+              {message.attachment_type === "contact" && message.content && (() => {
+                try {
+                  const c = JSON.parse(message.content) as { name?: string; userId?: string; avatarUrl?: string };
+                  return (
+                    <div className="mb-1 flex items-center gap-3 rounded-md p-2" style={{ background: "rgba(0,0,0,0.04)" }}>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground text-sm font-semibold">
+                        {(c.name ?? "U").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold opacity-60">Contact</span>
+                        <span className="text-sm">{c.name ?? "Unknown"}</span>
+                      </div>
+                    </div>
+                  );
+                } catch { return null; }
+              })()}
+              {(message.attachment_type === "location" || message.attachment_type === "live_location") && message.content && (() => {
+                try {
+                  const c = JSON.parse(message.content) as { lat: number; lng: number };
+                  const isLive = message.attachment_type === "live_location";
+                  const expired = isLive && message.live_location_until && new Date(message.live_location_until).getTime() < Date.now();
+                  return (
+                    <a
+                      href={`https://www.google.com/maps?q=${c.lat},${c.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mb-1 flex items-center gap-2 rounded-md p-2 hover:underline"
+                      style={{ background: "rgba(0,0,0,0.04)" }}
+                    >
+                      {isLive ? <Radio className={cn("h-4 w-4", !expired && "animate-pulse text-destructive")} /> : <MapPin className="h-4 w-4" />}
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold opacity-60">
+                          {isLive ? (expired ? "Live location ended" : "Live location") : "Location"}
+                        </span>
+                        <span className="text-sm">{c.lat.toFixed(4)}, {c.lng.toFixed(4)}</span>
+                        {isLive && !expired && message.live_location_until && (
+                          <span className="text-[10px] opacity-60">
+                            Until {new Date(message.live_location_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                      </div>
+                    </a>
+                  );
+                } catch { return null; }
+              })()}
             </>
           )}
           {message.attachment_type === "sticker" && message.content ? (
             <p className="text-6xl leading-none my-1">{message.content}</p>
-          ) : message.content && (
-            <div className="flex flex-col">
-              {isForwarded && (
-                <div className="flex items-center gap-1 opacity-60 mb-1 wa-text-muted">
-                  <Forward className="h-3 w-3" />
-                  <span className="text-[10px] italic font-medium">Forwarded</span>
-                </div>
-              )}
-              <p className="whitespace-pre-wrap break-words">{displayContent}</p>
-            </div>
-          )}
-          {message.content && (
+          ) : message.content && !["contact", "location", "live_location"].includes(message.attachment_type ?? "") && (
             <div className="flex flex-col">
               {isForwarded && (
                 <div className="flex items-center gap-1 opacity-60 mb-1 wa-text-muted">
