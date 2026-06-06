@@ -3323,6 +3323,59 @@ function MessageItem({
                   <span className="truncate">{message.attachment_name ?? "File"}</span>
                 </a>
               )}
+              {message.attachment_type === "video" && message.attachment_url && (
+                <video
+                  src={message.attachment_url}
+                  controls
+                  playsInline
+                  className="mb-1 max-h-72 rounded-md bg-black"
+                />
+              )}
+              {message.attachment_type === "contact" && message.content && (() => {
+                try {
+                  const c = JSON.parse(message.content) as { name?: string; userId?: string; avatarUrl?: string };
+                  return (
+                    <div className="mb-1 flex items-center gap-3 rounded-md p-2" style={{ background: "rgba(0,0,0,0.04)" }}>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground text-sm font-semibold">
+                        {(c.name ?? "U").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold opacity-60">Contact</span>
+                        <span className="text-sm">{c.name ?? "Unknown"}</span>
+                      </div>
+                    </div>
+                  );
+                } catch { return null; }
+              })()}
+              {(message.attachment_type === "location" || message.attachment_type === "live_location") && message.content && (() => {
+                try {
+                  const c = JSON.parse(message.content) as { lat: number; lng: number };
+                  const isLive = message.attachment_type === "live_location";
+                  const expired = isLive && message.live_location_until && new Date(message.live_location_until).getTime() < Date.now();
+                  return (
+                    <a
+                      href={`https://www.google.com/maps?q=${c.lat},${c.lng}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mb-1 flex items-center gap-2 rounded-md p-2 hover:underline"
+                      style={{ background: "rgba(0,0,0,0.04)" }}
+                    >
+                      {isLive ? <Radio className={cn("h-4 w-4", !expired && "animate-pulse text-destructive")} /> : <MapPin className="h-4 w-4" />}
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold opacity-60">
+                          {isLive ? (expired ? "Live location ended" : "Live location") : "Location"}
+                        </span>
+                        <span className="text-sm">{c.lat.toFixed(4)}, {c.lng.toFixed(4)}</span>
+                        {isLive && !expired && message.live_location_until && (
+                          <span className="text-[10px] opacity-60">
+                            Until {new Date(message.live_location_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
+                      </div>
+                    </a>
+                  );
+                } catch { return null; }
+              })()}
             </>
           )}
           {message.attachment_type === "sticker" && message.content ? (
