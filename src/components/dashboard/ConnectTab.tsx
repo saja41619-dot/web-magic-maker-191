@@ -2155,6 +2155,42 @@ function ChatWindow({
         onSchedule={scheduleCurrent}
       />
 
+      {showContactPicker && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowContactPicker(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-card p-4 shadow-elegant"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-semibold">Share a contact</h3>
+              <button onClick={() => setShowContactPicker(false)} className="text-muted-foreground">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-80 overflow-y-auto">
+              {users.map((u) => (
+                <button
+                  key={u.id}
+                  onClick={() => sendContact(u)}
+                  className="flex w-full items-center gap-3 rounded-md p-2 text-left hover:bg-secondary"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground text-sm font-semibold">
+                    {(u.display_name ?? "U").charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm">{u.display_name ?? "User"}</span>
+                </button>
+              ))}
+              {users.length === 0 && (
+                <p className="p-4 text-center text-sm text-muted-foreground">No contacts to share</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {scheduledMessages.length > 0 && (
         <div className="fixed bottom-24 right-4 z-30 rounded-full bg-primary text-primary-foreground shadow-elegant px-3 py-1.5 text-xs flex items-center gap-1.5">
           <CalendarClock className="h-3.5 w-3.5" />
