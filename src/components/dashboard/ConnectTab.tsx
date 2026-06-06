@@ -2171,7 +2171,7 @@ function ChatWindow({
               </button>
             </div>
             <div className="max-h-80 overflow-y-auto">
-              {users.map((u) => (
+              {allUsers.map((u: Profile) => (
                 <button
                   key={u.id}
                   onClick={() => sendContact(u)}
@@ -2183,7 +2183,7 @@ function ChatWindow({
                   <span className="text-sm">{u.display_name ?? "User"}</span>
                 </button>
               ))}
-              {users.length === 0 && (
+              {allUsers.length === 0 && (
                 <p className="p-4 text-center text-sm text-muted-foreground">No contacts to share</p>
               )}
             </div>
