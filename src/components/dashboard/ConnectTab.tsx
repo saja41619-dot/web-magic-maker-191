@@ -1885,6 +1885,77 @@ function ChatWindow({
           >
             <Timer className="h-5 w-5" />
           </button>
+
+          {/* Phase 2: media sharing */}
+          <button
+            type="button"
+            onClick={() => videoInputRef.current?.click()}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Video"
+            title="Send HD video"
+          >
+            <VideoIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowContactPicker(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Share contact"
+            title="Share a contact"
+          >
+            <ContactIcon className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={sendLocation}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Share location"
+            title="Share location"
+          >
+            <MapPin className="h-5 w-5" />
+          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                if (liveLocationRef.current) stopLiveLocation();
+                else setShowLiveLocationMenu((v) => !v);
+              }}
+              className={cn(
+                "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
+                liveLocationRef.current
+                  ? "bg-destructive text-destructive-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+              )}
+              aria-label="Live location"
+              title={liveLocationRef.current ? "Stop live location" : "Share live location"}
+            >
+              <Radio className="h-5 w-5" />
+            </button>
+            {showLiveLocationMenu && !liveLocationRef.current && (
+              <div className="absolute bottom-12 left-0 z-20 w-44 rounded-md border border-border bg-card p-1 shadow-lg">
+                {[15, 60, 480].map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => startLiveLocation(m)}
+                    className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-secondary"
+                  >
+                    Share for {m >= 60 ? `${m / 60} h` : `${m} min`}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={startScreenShare}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
+            aria-label="Screen share"
+            title="Share your screen"
+          >
+            <MonitorUp className="h-5 w-5" />
+          </button>
+
           <input
             ref={imageInputRef}
             type="file"
@@ -1893,6 +1964,17 @@ function ChatWindow({
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void uploadAndSend(f, "image");
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void uploadAndSend(f, "video");
               e.target.value = "";
             }}
           />
@@ -1906,6 +1988,7 @@ function ChatWindow({
               e.target.value = "";
             }}
           />
+
 
           <textarea
             value={editingId ? editingText : text}
