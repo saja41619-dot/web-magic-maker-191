@@ -240,6 +240,7 @@ export type Database = {
           forwarded: boolean
           id: string
           is_broadcast: boolean
+          live_location_until: string | null
           poll_id: string | null
           read_at: string | null
           recipient_id: string
@@ -261,6 +262,7 @@ export type Database = {
           forwarded?: boolean
           id?: string
           is_broadcast?: boolean
+          live_location_until?: string | null
           poll_id?: string | null
           read_at?: string | null
           recipient_id: string
@@ -282,6 +284,7 @@ export type Database = {
           forwarded?: boolean
           id?: string
           is_broadcast?: boolean
+          live_location_until?: string | null
           poll_id?: string | null
           read_at?: string | null
           recipient_id?: string
@@ -385,6 +388,7 @@ export type Database = {
           forwarded: boolean
           group_id: string
           id: string
+          live_location_until: string | null
           poll_id: string | null
           reply_to_id: string | null
           scheduled_for: string | null
@@ -404,6 +408,7 @@ export type Database = {
           forwarded?: boolean
           group_id: string
           id?: string
+          live_location_until?: string | null
           poll_id?: string | null
           reply_to_id?: string | null
           scheduled_for?: string | null
@@ -423,6 +428,7 @@ export type Database = {
           forwarded?: boolean
           group_id?: string
           id?: string
+          live_location_until?: string | null
           poll_id?: string | null
           reply_to_id?: string | null
           scheduled_for?: string | null
