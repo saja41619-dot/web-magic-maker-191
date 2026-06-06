@@ -1232,6 +1232,7 @@ function ChatWindow({
         expires_at: expiresAtFromSeconds(chatSetting?.disappearing_seconds ?? null),
         view_once: overrides?.view_once ?? viewOnceArmed,
         scheduled_for: overrides?.scheduled_for ?? null,
+        live_location_until: overrides?.live_location_until ?? null,
       } as Record<string, unknown>;
       const { data, error } = await supabase
         .from("direct_messages")
