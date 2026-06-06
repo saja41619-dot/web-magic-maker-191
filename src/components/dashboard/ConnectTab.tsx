@@ -94,7 +94,7 @@ interface DM {
   recipient_id: string;
   content: string | null;
   attachment_url: string | null;
-  attachment_type: "image" | "file" | "voice" | "video" | "gif" | "sticker" | null;
+  attachment_type: "image" | "file" | "voice" | "video" | "gif" | "sticker" | "contact" | "location" | "live_location" | null;
   attachment_name: string | null;
   created_at: string;
   read_at: string | null;
