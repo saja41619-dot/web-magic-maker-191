@@ -109,6 +109,7 @@ interface DM {
   view_once_opened_at?: string | null;
   scheduled_for?: string | null;
   is_broadcast?: boolean;
+  live_location_until?: string | null;
 }
 
 interface Presence {
