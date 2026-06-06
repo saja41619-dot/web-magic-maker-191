@@ -3380,18 +3380,7 @@ function MessageItem({
           )}
           {message.attachment_type === "sticker" && message.content ? (
             <p className="text-6xl leading-none my-1">{message.content}</p>
-          ) : message.content && (
-            <div className="flex flex-col">
-              {isForwarded && (
-                <div className="flex items-center gap-1 opacity-60 mb-1 wa-text-muted">
-                  <Forward className="h-3 w-3" />
-                  <span className="text-[10px] italic font-medium">Forwarded</span>
-                </div>
-              )}
-              <p className="whitespace-pre-wrap break-words">{displayContent}</p>
-            </div>
-          )}
-          {message.content && (
+          ) : message.content && !["contact", "location", "live_location"].includes(message.attachment_type ?? "") && (
             <div className="flex flex-col">
               {isForwarded && (
                 <div className="flex items-center gap-1 opacity-60 mb-1 wa-text-muted">
