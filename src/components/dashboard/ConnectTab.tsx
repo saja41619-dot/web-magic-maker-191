@@ -47,6 +47,10 @@ import {
   Sticker as StickerIcon,
   Film,
   Filter,
+  MapPin,
+  Contact as ContactIcon,
+  Radio,
+  MonitorUp,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
