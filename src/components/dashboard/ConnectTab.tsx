@@ -1267,7 +1267,7 @@ function ChatWindow({
     void sendMessage({ scheduled_for: whenISO });
   };
 
-  const uploadAndSend = async (file: File, type: "image" | "file" | "voice") => {
+  const uploadAndSend = async (file: File, type: "image" | "file" | "voice" | "video") => {
     if (!user) return;
     setSending(true);
     try {
@@ -1288,6 +1288,134 @@ function ChatWindow({
       });
     } finally {
       setSending(false);
+    }
+  };
+
+  // ---- Phase 2: Media sharing helpers ----
+  const sendContact = (p: Profile) => {
+    void sendMessage({
+      attachment_type: "contact",
+      content: JSON.stringify({ userId: p.id, name: p.display_name, avatarUrl: p.avatar_url }),
+    });
+    setShowContactPicker(false);
+  };
+
+  const sendLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation not supported");
+      return;
+    }
+    toast.info("Getting location…");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        void sendMessage({
+          attachment_type: "location",
+          content: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        });
+      },
+      (err) => toast.error("Location error: " + err.message),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  const startLiveLocation = async (minutes: number) => {
+    if (!navigator.geolocation || !user) {
+      toast.error("Geolocation not supported");
+      return;
+    }
+    const until = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const content = JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        // Insert initial live_location row directly so we have its id
+        const { data, error } = await supabase
+          .from("direct_messages")
+          .insert({
+            sender_id: user.id,
+            recipient_id: peer.id,
+            content,
+            attachment_type: "live_location",
+            live_location_until: until,
+          } as never)
+          .select()
+          .single();
+        if (error) {
+          toast.error("Could not start live location");
+          return;
+        }
+        if (data) setMessages((prev) => [...prev, data as DM]);
+        liveLocationRef.current = {
+          messageId: (data as DM).id,
+          watchId: navigator.geolocation.watchPosition(
+            async (p2) => {
+              if (!liveLocationRef.current) return;
+              if (new Date(until).getTime() < Date.now()) {
+                stopLiveLocation();
+                return;
+              }
+              await supabase
+                .from("direct_messages")
+                .update({
+                  content: JSON.stringify({ lat: p2.coords.latitude, lng: p2.coords.longitude }),
+                } as never)
+                .eq("id", liveLocationRef.current.messageId);
+            },
+            () => {},
+            { enableHighAccuracy: true, maximumAge: 5000 },
+          ),
+          until,
+        };
+        toast.success(`Sharing live location for ${minutes} min`);
+      },
+      (err) => toast.error("Location error: " + err.message),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+    setShowLiveLocationMenu(false);
+  };
+
+  const stopLiveLocation = () => {
+    if (liveLocationRef.current) {
+      navigator.geolocation.clearWatch(liveLocationRef.current.watchId);
+      void supabase
+        .from("direct_messages")
+        .update({ live_location_until: new Date().toISOString() } as never)
+        .eq("id", liveLocationRef.current.messageId);
+      liveLocationRef.current = null;
+      toast.success("Live location stopped");
+    }
+  };
+
+  const startScreenShare = async () => {
+    if (!signalingChannelRef.current) {
+      toast.error("Open a chat first");
+      return;
+    }
+    try {
+      const display = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      // Replace video track on existing call if active, else start a video call seeded with screen
+      setCallType("video");
+      const cm = callManagerRef.current!;
+      await cm.requestMediaAccess(false, false); // ensure peer connection lifecycle
+      const offer = await cm.initiateCall("video");
+      // Swap to screen tracks
+      const pc = (cm as unknown as { peerConnection: RTCPeerConnection | null }).peerConnection;
+      if (pc) {
+        const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+        const screenTrack = display.getVideoTracks()[0];
+        if (sender && screenTrack) await sender.replaceTrack(screenTrack);
+        screenTrack.addEventListener("ended", () => {
+          toast.info("Screen share ended");
+        });
+      }
+      setLocalStream(display);
+      signalingChannelRef.current.send({
+        type: "broadcast",
+        event: "call-offer",
+        payload: { offer, callType: "video" },
+      });
+      toast.success("Screen sharing started");
+    } catch (err) {
+      toast.error("Screen share failed: " + (err instanceof Error ? err.message : String(err)));
     }
   };
 
