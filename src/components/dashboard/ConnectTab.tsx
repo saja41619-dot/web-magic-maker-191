@@ -631,6 +631,14 @@ export function ConnectTab() {
         <WhatsAppFeaturesHub open={showFeaturesHub} onOpenChange={setShowFeaturesHub} />
         <InviteUserModal open={showInviteModal} onOpenChange={setShowInviteModal} />
         <BroadcastModal open={showBroadcastModal} onOpenChange={setShowBroadcastModal} users={users} />
+        <CallHistoryModal
+          open={showCallHistory}
+          onOpenChange={setShowCallHistory}
+          onCallback={(peerId) => {
+            const peer = users.find((u) => u.id === peerId);
+            if (peer) setActivePeer(peer);
+          }}
+        />
       </div>
     </section>
   );
