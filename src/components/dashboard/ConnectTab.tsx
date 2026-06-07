@@ -68,6 +68,7 @@ import { BroadcastModal } from "./BroadcastModal";
 import { GifPicker } from "./GifPicker";
 import { StickerPicker } from "./StickerPicker";
 import { ScheduleMessageDialog } from "./ScheduleMessageDialog";
+import { CallHistoryModal } from "./CallHistoryModal";
 import {
   loadChatSettings,
   upsertChatSetting,
