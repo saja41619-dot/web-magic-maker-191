@@ -958,6 +958,12 @@ function ChatWindow({
       .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
         const { answer } = payload;
         await callManagerRef.current?.handleRemoteAnswer(answer);
+        if (currentCallIdRef.current) {
+          void supabase
+            .from("calls")
+            .update({ status: "active", started_at: new Date().toISOString() })
+            .eq("id", currentCallIdRef.current);
+        }
       })
       .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
         const { candidate } = payload;
@@ -969,6 +975,14 @@ function ChatWindow({
         toast.error("Call declined");
         setIsRinging(false);
         setIncomingOffer(null);
+        if (currentCallIdRef.current) {
+          void supabase
+            .from("calls")
+            .update({ status: "declined", ended_at: new Date().toISOString() })
+            .eq("id", currentCallIdRef.current);
+          currentCallIdRef.current = null;
+          currentCallRoomRef.current = null;
+        }
       })
       .on("broadcast", { event: "call-end" }, () => {
         callManagerRef.current?.endCall();
