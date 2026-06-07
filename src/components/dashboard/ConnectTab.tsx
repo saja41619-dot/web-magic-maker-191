@@ -171,6 +171,7 @@ export function ConnectTab() {
   const [showFeaturesHub, setShowFeaturesHub] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [showCallHistory, setShowCallHistory] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
