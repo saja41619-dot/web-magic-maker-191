@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { 
-  Mic, 
-  MicOff, 
-  Video, 
-  VideoOff, 
-  PhoneOff, 
-  Maximize2, 
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  PhoneOff,
+  Maximize2,
   Minimize2,
   Volume2,
   VolumeX,
-  User
+  User,
+  Pause,
+  Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CallType } from "@/lib/callManager";
@@ -22,6 +24,7 @@ interface CallUIProps {
   onEndCall: () => void;
   onToggleMic: (enabled: boolean) => void;
   onToggleVideo: (enabled: boolean) => void;
+  onToggleHold?: (held: boolean) => void;
   peerName: string;
 }
 
