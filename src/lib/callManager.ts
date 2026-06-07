@@ -221,4 +221,13 @@ export class CallManager {
       });
     }
   }
+
+  /** Hold pauses both audio & video without releasing the stream. */
+  setHold(held: boolean): void {
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => {
+        track.enabled = !held;
+      });
+    }
+  }
 }

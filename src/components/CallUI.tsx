@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { 
-  Mic, 
-  MicOff, 
-  Video, 
-  VideoOff, 
-  PhoneOff, 
-  Maximize2, 
+import {
+  Mic,
+  MicOff,
+  Video,
+  VideoOff,
+  PhoneOff,
+  Maximize2,
   Minimize2,
   Volume2,
   VolumeX,
-  User
+  User,
+  Pause,
+  Play,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CallType } from "@/lib/callManager";
@@ -22,6 +24,7 @@ interface CallUIProps {
   onEndCall: () => void;
   onToggleMic: (enabled: boolean) => void;
   onToggleVideo: (enabled: boolean) => void;
+  onToggleHold?: (held: boolean) => void;
   peerName: string;
 }
 
@@ -33,6 +36,7 @@ export function CallUI({
   onEndCall,
   onToggleMic,
   onToggleVideo,
+  onToggleHold,
   peerName,
 }: CallUIProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -41,6 +45,7 @@ export function CallUI({
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isHeld, setIsHeld] = useState(false);
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -103,7 +108,7 @@ export function CallUI({
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-white">{peerName}</h2>
                 <p className="mt-2 text-primary animate-pulse font-medium">
-                  {remoteStream ? "Connected" : "Calling..."}
+                  {isHeld ? "On hold" : remoteStream ? `Connected · ${formatDuration(callDuration)}` : "Calling..."}
                 </p>
               </div>
             </div>
@@ -141,6 +146,22 @@ export function CallUI({
             {callType === "video" && (
               <button onClick={handleToggleVideo} className="h-14 w-14 rounded-full bg-secondary flex items-center justify-center">
                 {videoEnabled ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
+              </button>
+            )}
+            {onToggleHold && (
+              <button
+                onClick={() => {
+                  const next = !isHeld;
+                  setIsHeld(next);
+                  onToggleHold(next);
+                }}
+                title={isHeld ? "Resume" : "Hold"}
+                className={cn(
+                  "h-14 w-14 rounded-full flex items-center justify-center transition-all",
+                  isHeld ? "bg-primary text-primary-foreground" : "bg-secondary"
+                )}
+              >
+                {isHeld ? <Play className="h-6 w-6" /> : <Pause className="h-6 w-6" />}
               </button>
             )}
           </div>

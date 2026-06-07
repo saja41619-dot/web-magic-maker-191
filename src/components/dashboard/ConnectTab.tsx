@@ -51,6 +51,7 @@ import {
   Contact as ContactIcon,
   Radio,
   MonitorUp,
+  History,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
@@ -68,6 +69,7 @@ import { BroadcastModal } from "./BroadcastModal";
 import { GifPicker } from "./GifPicker";
 import { StickerPicker } from "./StickerPicker";
 import { ScheduleMessageDialog } from "./ScheduleMessageDialog";
+import { CallHistoryModal } from "./CallHistoryModal";
 import {
   loadChatSettings,
   upsertChatSetting,
@@ -169,6 +171,7 @@ export function ConnectTab() {
   const [showFeaturesHub, setShowFeaturesHub] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [showCallHistory, setShowCallHistory] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -386,6 +389,14 @@ export function ConnectTab() {
                 aria-label="New broadcast"
               >
                 <Megaphone className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowCallHistory(true)}
+                className="wa-icon-btn"
+                title="Call history"
+                aria-label="Call history"
+              >
+                <History className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setShowInviteModal(true)}
@@ -620,6 +631,14 @@ export function ConnectTab() {
         <WhatsAppFeaturesHub open={showFeaturesHub} onOpenChange={setShowFeaturesHub} />
         <InviteUserModal open={showInviteModal} onOpenChange={setShowInviteModal} />
         <BroadcastModal open={showBroadcastModal} onOpenChange={setShowBroadcastModal} users={users} />
+        <CallHistoryModal
+          open={showCallHistory}
+          onOpenChange={setShowCallHistory}
+          onCallback={(peerId) => {
+            const peer = users.find((u) => u.id === peerId);
+            if (peer) setActivePeer(peer);
+          }}
+        />
       </div>
     </section>
   );
@@ -779,6 +798,8 @@ function ChatWindow({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [callDuration, setCallDuration] = useState(0);
+  const currentCallIdRef = useRef<string | null>(null);
+  const currentCallRoomRef = useRef<string | null>(null);
 
   const callStateRef = useRef<CallState>("idle");
   useEffect(() => {
@@ -937,6 +958,12 @@ function ChatWindow({
       .on("broadcast", { event: "call-answer" }, async ({ payload }) => {
         const { answer } = payload;
         await callManagerRef.current?.handleRemoteAnswer(answer);
+        if (currentCallIdRef.current) {
+          void supabase
+            .from("calls")
+            .update({ status: "active", started_at: new Date().toISOString() })
+            .eq("id", currentCallIdRef.current);
+        }
       })
       .on("broadcast", { event: "ice-candidate" }, async ({ payload }) => {
         const { candidate } = payload;
@@ -948,6 +975,14 @@ function ChatWindow({
         toast.error("Call declined");
         setIsRinging(false);
         setIncomingOffer(null);
+        if (currentCallIdRef.current) {
+          void supabase
+            .from("calls")
+            .update({ status: "declined", ended_at: new Date().toISOString() })
+            .eq("id", currentCallIdRef.current);
+          currentCallIdRef.current = null;
+          currentCallRoomRef.current = null;
+        }
       })
       .on("broadcast", { event: "call-end" }, () => {
         callManagerRef.current?.endCall();
@@ -1175,15 +1210,32 @@ function ChatWindow({
   };
 
   const startCall = async (type: "voice" | "video") => {
-    if (!signalingChannelRef.current) return;
+    if (!signalingChannelRef.current || !user) return;
     setCallType(type);
     const offer = await callManagerRef.current!.initiateCall(type);
     setLocalStream(callManagerRef.current!.getLocalStream());
 
+    // Record outgoing call in DB so it shows in history
+    const roomId = `dm-${[user.id, peer.id].sort().join("-")}-${Date.now()}`;
+    currentCallRoomRef.current = roomId;
+    const { data: callRow } = await supabase
+      .from("calls")
+      .insert({
+        room_id: roomId,
+        kind: "dm",
+        media: type,
+        caller_id: user.id,
+        callee_id: peer.id,
+        status: "ringing",
+      })
+      .select("id")
+      .maybeSingle();
+    currentCallIdRef.current = callRow?.id ?? null;
+
     signalingChannelRef.current.send({
       type: "broadcast",
       event: "call-offer",
-      payload: { offer, callType: type },
+      payload: { offer, callType: type, roomId },
     });
 
     callManagerRef.current!.getIceCandidates((candidate) => {
@@ -1203,6 +1255,14 @@ function ChatWindow({
       type: "broadcast",
       event: "call-end",
     });
+    if (currentCallIdRef.current) {
+      void supabase
+        .from("calls")
+        .update({ status: "ended", ended_at: new Date().toISOString() })
+        .eq("id", currentCallIdRef.current);
+      currentCallIdRef.current = null;
+      currentCallRoomRef.current = null;
+    }
   };
 
   const blockUser = async () => {
@@ -2097,6 +2157,7 @@ function ChatWindow({
           onEndCall={endCall}
           onToggleMic={(enabled) => callManagerRef.current!.toggleAudio(enabled)}
           onToggleVideo={(enabled) => callManagerRef.current!.toggleVideo(enabled)}
+          onToggleHold={(held) => callManagerRef.current!.setHold(held)}
           peerName={peer.display_name ?? "User"}
         />
       )}
@@ -3222,6 +3283,7 @@ function GroupChatWindow({
             onEndCall={endCall}
             onToggleMic={(enabled) => callManagerRef.current!.toggleAudio(enabled)}
             onToggleVideo={(enabled) => callManagerRef.current!.toggleVideo(enabled)}
+            onToggleHold={(held) => callManagerRef.current!.setHold(held)}
             peerName={callingPeer.display_name ?? "User"}
           />
         )}
