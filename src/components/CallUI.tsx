@@ -148,6 +148,22 @@ export function CallUI({
                 {videoEnabled ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
               </button>
             )}
+            {onToggleHold && (
+              <button
+                onClick={() => {
+                  const next = !isHeld;
+                  setIsHeld(next);
+                  onToggleHold(next);
+                }}
+                title={isHeld ? "Resume" : "Hold"}
+                className={cn(
+                  "h-14 w-14 rounded-full flex items-center justify-center transition-all",
+                  isHeld ? "bg-primary text-primary-foreground" : "bg-secondary"
+                )}
+              >
+                {isHeld ? <Play className="h-6 w-6" /> : <Pause className="h-6 w-6" />}
+              </button>
+            )}
           </div>
         </div>
       </div>
