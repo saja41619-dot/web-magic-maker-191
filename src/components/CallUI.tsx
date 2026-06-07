@@ -36,6 +36,7 @@ export function CallUI({
   onEndCall,
   onToggleMic,
   onToggleVideo,
+  onToggleHold,
   peerName,
 }: CallUIProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -44,6 +45,7 @@ export function CallUI({
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isHeld, setIsHeld] = useState(false);
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
