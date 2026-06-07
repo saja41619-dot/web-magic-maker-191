@@ -391,6 +391,14 @@ export function ConnectTab() {
                 <Megaphone className="h-5 w-5" />
               </button>
               <button
+                onClick={() => setShowCallHistory(true)}
+                className="wa-icon-btn"
+                title="Call history"
+                aria-label="Call history"
+              >
+                <History className="h-5 w-5" />
+              </button>
+              <button
                 onClick={() => setShowInviteModal(true)}
                 className="wa-icon-btn"
                 title="Invite user"
