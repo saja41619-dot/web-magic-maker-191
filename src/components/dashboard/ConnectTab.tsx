@@ -2157,6 +2157,7 @@ function ChatWindow({
           onEndCall={endCall}
           onToggleMic={(enabled) => callManagerRef.current!.toggleAudio(enabled)}
           onToggleVideo={(enabled) => callManagerRef.current!.toggleVideo(enabled)}
+          onToggleHold={(held) => callManagerRef.current!.setHold(held)}
           peerName={peer.display_name ?? "User"}
         />
       )}
