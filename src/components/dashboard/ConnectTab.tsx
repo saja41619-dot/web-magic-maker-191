@@ -1196,15 +1196,32 @@ function ChatWindow({
   };
 
   const startCall = async (type: "voice" | "video") => {
-    if (!signalingChannelRef.current) return;
+    if (!signalingChannelRef.current || !user) return;
     setCallType(type);
     const offer = await callManagerRef.current!.initiateCall(type);
     setLocalStream(callManagerRef.current!.getLocalStream());
 
+    // Record outgoing call in DB so it shows in history
+    const roomId = `dm-${[user.id, peer.id].sort().join("-")}-${Date.now()}`;
+    currentCallRoomRef.current = roomId;
+    const { data: callRow } = await supabase
+      .from("calls")
+      .insert({
+        room_id: roomId,
+        kind: "dm",
+        media: type,
+        caller_id: user.id,
+        callee_id: peer.id,
+        status: "ringing",
+      })
+      .select("id")
+      .maybeSingle();
+    currentCallIdRef.current = callRow?.id ?? null;
+
     signalingChannelRef.current.send({
       type: "broadcast",
       event: "call-offer",
-      payload: { offer, callType: type },
+      payload: { offer, callType: type, roomId },
     });
 
     callManagerRef.current!.getIceCandidates((candidate) => {
@@ -1224,6 +1241,14 @@ function ChatWindow({
       type: "broadcast",
       event: "call-end",
     });
+    if (currentCallIdRef.current) {
+      void supabase
+        .from("calls")
+        .update({ status: "ended", ended_at: new Date().toISOString() })
+        .eq("id", currentCallIdRef.current);
+      currentCallIdRef.current = null;
+      currentCallRoomRef.current = null;
+    }
   };
 
   const blockUser = async () => {
