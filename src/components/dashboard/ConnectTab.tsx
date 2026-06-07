@@ -798,6 +798,8 @@ function ChatWindow({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [callDuration, setCallDuration] = useState(0);
+  const currentCallIdRef = useRef<string | null>(null);
+  const currentCallRoomRef = useRef<string | null>(null);
 
   const callStateRef = useRef<CallState>("idle");
   useEffect(() => {
