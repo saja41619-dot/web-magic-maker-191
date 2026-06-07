@@ -3283,6 +3283,7 @@ function GroupChatWindow({
             onEndCall={endCall}
             onToggleMic={(enabled) => callManagerRef.current!.toggleAudio(enabled)}
             onToggleVideo={(enabled) => callManagerRef.current!.toggleVideo(enabled)}
+            onToggleHold={(held) => callManagerRef.current!.setHold(held)}
             peerName={callingPeer.display_name ?? "User"}
           />
         )}
