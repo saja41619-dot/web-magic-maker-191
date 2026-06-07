@@ -51,6 +51,7 @@ import {
   Contact as ContactIcon,
   Radio,
   MonitorUp,
+  History,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
