@@ -108,7 +108,7 @@ export function CallUI({
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-white">{peerName}</h2>
                 <p className="mt-2 text-primary animate-pulse font-medium">
-                  {remoteStream ? "Connected" : "Calling..."}
+                  {isHeld ? "On hold" : remoteStream ? `Connected · ${formatDuration(callDuration)}` : "Calling..."}
                 </p>
               </div>
             </div>
