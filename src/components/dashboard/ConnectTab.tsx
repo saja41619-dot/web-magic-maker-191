@@ -664,6 +664,8 @@ export function ConnectTab() {
             if (peer) setActivePeer(peer);
           }}
         />
+        <CommunityHub open={showCommunities} onOpenChange={setShowCommunities} users={users} />
+        <AdvancedSettingsModal open={showAdvancedSettings} onOpenChange={setShowAdvancedSettings} />
       </div>
     </section>
   );
