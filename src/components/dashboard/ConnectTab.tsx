@@ -2278,6 +2278,7 @@ interface GroupMessage {
   attachment_type: "image" | "file" | "voice" | null;
   attachment_name: string | null;
   reply_to_id: string | null;
+  poll_id: string | null;
   created_at: string;
 }
 
