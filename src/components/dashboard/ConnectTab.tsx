@@ -2940,6 +2940,7 @@ function GroupChatWindow({
                     <span className="truncate">{m.attachment_name ?? "File"}</span>
                   </a>
                 )}
+                {m.poll_id && <PollDisplay pollId={m.poll_id} mine={mine} />}
                 {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
                 <span className="wa-meta">
                   {formatTime(m.created_at)}
