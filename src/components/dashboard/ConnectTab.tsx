@@ -52,6 +52,9 @@ import {
   Radio,
   MonitorUp,
   History,
+  BarChart3,
+  Settings2,
+  Users2,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
