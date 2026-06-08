@@ -408,6 +408,22 @@ export function ConnectTab() {
                 <History className="h-5 w-5" />
               </button>
               <button
+                onClick={() => setShowCommunities(true)}
+                className="wa-icon-btn"
+                title="Communities"
+                aria-label="Communities"
+              >
+                <Users2 className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowAdvancedSettings(true)}
+                className="wa-icon-btn"
+                title="Advanced settings"
+                aria-label="Advanced settings"
+              >
+                <Settings2 className="h-5 w-5" />
+              </button>
+              <button
                 onClick={() => setShowInviteModal(true)}
                 className="wa-icon-btn"
                 title="Invite user"
