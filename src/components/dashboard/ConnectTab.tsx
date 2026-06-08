@@ -2742,7 +2742,7 @@ function GroupChatWindow({
   const send = async (overrides?: Partial<GroupMessage>) => {
     if (!user) return;
     const content = (overrides?.content ?? text).trim();
-    if (!content && !overrides?.attachment_url) return;
+    if (!content && !overrides?.attachment_url && !overrides?.poll_id) return;
     setSending(true);
     try {
       const payload = {
@@ -2753,6 +2753,7 @@ function GroupChatWindow({
         attachment_type: overrides?.attachment_type ?? null,
         attachment_name: overrides?.attachment_name ?? null,
         reply_to_id: replyingTo?.id ?? null,
+        poll_id: overrides?.poll_id ?? null,
       };
       const { error } = await supabase.from("group_messages").insert(payload);
       if (error) throw error;
