@@ -3108,6 +3108,14 @@ function GroupChatWindow({
               e.target.value = "";
             }}
           />
+          <button
+            onClick={() => setShowPollComposer(true)}
+            className="p-2 rounded-full hover:bg-secondary text-muted-foreground"
+            aria-label="Poll"
+            title="Create poll"
+          >
+            <BarChart3 className="h-5 w-5" />
+          </button>
           <input
             value={text}
             onChange={(e) => {
