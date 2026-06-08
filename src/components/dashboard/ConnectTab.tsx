@@ -3336,7 +3336,7 @@ function GroupChatWindow({
   );
 }
 
-function _PhaseFiveAnchor() {
+
 
 function MessageItem({
   message,
