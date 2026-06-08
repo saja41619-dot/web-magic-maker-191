@@ -3326,9 +3326,17 @@ function GroupChatWindow({
             peerName={callingPeer.display_name ?? "User"}
           />
         )}
+
+      <PollComposer
+        open={showPollComposer}
+        onClose={() => setShowPollComposer(false)}
+        onCreated={(pollId) => send({ poll_id: pollId })}
+      />
     </>
   );
 }
+
+function _PhaseFiveAnchor() {
 
 function MessageItem({
   message,
