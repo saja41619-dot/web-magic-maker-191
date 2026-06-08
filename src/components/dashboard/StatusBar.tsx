@@ -395,7 +395,7 @@ function StatusViewer({
         .select("viewer_id, viewed_at")
         .eq("status_id", post.id)
         .order("viewed_at", { ascending: false })
-        .then(({ data }) => setViewerRows((data ?? []) as StatusViewerRow[]));
+        .then(({ data }) => setViewerRows(((data ?? []) as unknown) as StatusViewerRow[]));
     }
     void supabase
       .from("status_reactions" as any)
