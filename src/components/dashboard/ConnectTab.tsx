@@ -52,6 +52,9 @@ import {
   Radio,
   MonitorUp,
   History,
+  BarChart3,
+  Settings2,
+  Users2,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
@@ -70,6 +73,10 @@ import { GifPicker } from "./GifPicker";
 import { StickerPicker } from "./StickerPicker";
 import { ScheduleMessageDialog } from "./ScheduleMessageDialog";
 import { CallHistoryModal } from "./CallHistoryModal";
+import { CommunityHub } from "./CommunityHub";
+import { AdvancedSettingsModal } from "./AdvancedSettingsModal";
+import { PollComposer } from "./PollComposer";
+import { PollDisplay } from "./PollDisplay";
 import {
   loadChatSettings,
   upsertChatSetting,
@@ -172,6 +179,8 @@ export function ConnectTab() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [showCallHistory, setShowCallHistory] = useState(false);
+  const [showCommunities, setShowCommunities] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -397,6 +406,22 @@ export function ConnectTab() {
                 aria-label="Call history"
               >
                 <History className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowCommunities(true)}
+                className="wa-icon-btn"
+                title="Communities"
+                aria-label="Communities"
+              >
+                <Users2 className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowAdvancedSettings(true)}
+                className="wa-icon-btn"
+                title="Advanced settings"
+                aria-label="Advanced settings"
+              >
+                <Settings2 className="h-5 w-5" />
               </button>
               <button
                 onClick={() => setShowInviteModal(true)}
@@ -639,6 +664,8 @@ export function ConnectTab() {
             if (peer) setActivePeer(peer);
           }}
         />
+        <CommunityHub open={showCommunities} onOpenChange={setShowCommunities} users={users} />
+        <AdvancedSettingsModal open={showAdvancedSettings} onOpenChange={setShowAdvancedSettings} />
       </div>
     </section>
   );
@@ -2271,6 +2298,7 @@ interface GroupMessage {
   attachment_type: "image" | "file" | "voice" | null;
   attachment_name: string | null;
   reply_to_id: string | null;
+  poll_id: string | null;
   created_at: string;
 }
 
@@ -2299,6 +2327,7 @@ function GroupChatWindow({
   const [replyingTo, setReplyingTo] = useState<GroupMessage | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showPollComposer, setShowPollComposer] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
   const [onlineMap, setOnlineMap] = useState<Record<string, boolean>>({});
   const [readsByMessage, setReadsByMessage] = useState<Record<string, string[]>>({});
@@ -2713,7 +2742,7 @@ function GroupChatWindow({
   const send = async (overrides?: Partial<GroupMessage>) => {
     if (!user) return;
     const content = (overrides?.content ?? text).trim();
-    if (!content && !overrides?.attachment_url) return;
+    if (!content && !overrides?.attachment_url && !overrides?.poll_id) return;
     setSending(true);
     try {
       const payload = {
@@ -2724,6 +2753,7 @@ function GroupChatWindow({
         attachment_type: overrides?.attachment_type ?? null,
         attachment_name: overrides?.attachment_name ?? null,
         reply_to_id: replyingTo?.id ?? null,
+        poll_id: overrides?.poll_id ?? null,
       };
       const { error } = await supabase.from("group_messages").insert(payload);
       if (error) throw error;
@@ -2910,6 +2940,7 @@ function GroupChatWindow({
                     <span className="truncate">{m.attachment_name ?? "File"}</span>
                   </a>
                 )}
+                {m.poll_id && <PollDisplay pollId={m.poll_id} mine={mine} />}
                 {m.content && <p className="whitespace-pre-wrap break-words">{m.content}</p>}
                 <span className="wa-meta">
                   {formatTime(m.created_at)}
@@ -3077,6 +3108,14 @@ function GroupChatWindow({
               e.target.value = "";
             }}
           />
+          <button
+            onClick={() => setShowPollComposer(true)}
+            className="p-2 rounded-full hover:bg-secondary text-muted-foreground"
+            aria-label="Poll"
+            title="Create poll"
+          >
+            <BarChart3 className="h-5 w-5" />
+          </button>
           <input
             value={text}
             onChange={(e) => {
@@ -3287,9 +3326,17 @@ function GroupChatWindow({
             peerName={callingPeer.display_name ?? "User"}
           />
         )}
+
+      <PollComposer
+        open={showPollComposer}
+        onClose={() => setShowPollComposer(false)}
+        onCreated={(pollId) => send({ poll_id: pollId })}
+      />
     </>
   );
 }
+
+
 
 function MessageItem({
   message,
