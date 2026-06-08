@@ -2327,6 +2327,7 @@ function GroupChatWindow({
   const [replyingTo, setReplyingTo] = useState<GroupMessage | null>(null);
   const [showInfo, setShowInfo] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showPollComposer, setShowPollComposer] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Record<string, string>>({});
   const [onlineMap, setOnlineMap] = useState<Record<string, boolean>>({});
   const [readsByMessage, setReadsByMessage] = useState<Record<string, string[]>>({});
