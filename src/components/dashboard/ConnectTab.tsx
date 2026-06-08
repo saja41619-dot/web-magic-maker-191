@@ -73,6 +73,10 @@ import { GifPicker } from "./GifPicker";
 import { StickerPicker } from "./StickerPicker";
 import { ScheduleMessageDialog } from "./ScheduleMessageDialog";
 import { CallHistoryModal } from "./CallHistoryModal";
+import { CommunityHub } from "./CommunityHub";
+import { AdvancedSettingsModal } from "./AdvancedSettingsModal";
+import { PollComposer } from "./PollComposer";
+import { PollDisplay } from "./PollDisplay";
 import {
   loadChatSettings,
   upsertChatSetting,
