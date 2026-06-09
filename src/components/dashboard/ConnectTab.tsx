@@ -700,7 +700,7 @@ export function ConnectTab() {
           users={users}
           groups={groups}
           onOpenDm={openPeer}
-          onOpenGroup={openGroup}
+          onOpenGroup={(g) => { const full = groups.find((x) => x.id === g.id); if (full) openGroup(full); }}
         />
       </div>
     </section>
