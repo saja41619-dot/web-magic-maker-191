@@ -77,6 +77,8 @@ import { CommunityHub } from "./CommunityHub";
 import { AdvancedSettingsModal } from "./AdvancedSettingsModal";
 import { PollComposer } from "./PollComposer";
 import { PollDisplay } from "./PollDisplay";
+import { GlobalSearchModal } from "./GlobalSearchModal";
+import { StarredMessagesModal } from "./StarredMessagesModal";
 import {
   loadChatSettings,
   upsertChatSetting,
@@ -181,6 +183,8 @@ export function ConnectTab() {
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [showCommunities, setShowCommunities] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [showStarred, setShowStarred] = useState(false);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -432,6 +436,22 @@ export function ConnectTab() {
                 <UserPlus className="h-5 w-5" />
               </button>
               <button
+                onClick={() => setShowGlobalSearch(true)}
+                className="wa-icon-btn"
+                title="Search all chats"
+                aria-label="Search all chats"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setShowStarred(true)}
+                className="wa-icon-btn"
+                title="Starred messages"
+                aria-label="Starred messages"
+              >
+                <Star className="h-5 w-5" />
+              </button>
+              <button
                 onClick={() => setShowFeaturesHub(true)}
                 className="wa-icon-btn"
                 title="WhatsApp features"
@@ -666,6 +686,22 @@ export function ConnectTab() {
         />
         <CommunityHub open={showCommunities} onOpenChange={setShowCommunities} users={users} />
         <AdvancedSettingsModal open={showAdvancedSettings} onOpenChange={setShowAdvancedSettings} />
+        <GlobalSearchModal
+          open={showGlobalSearch}
+          onOpenChange={setShowGlobalSearch}
+          users={users}
+          groups={groups}
+          onOpenDm={openPeer}
+          onOpenGroup={openGroup}
+        />
+        <StarredMessagesModal
+          open={showStarred}
+          onOpenChange={setShowStarred}
+          users={users}
+          groups={groups}
+          onOpenDm={openPeer}
+          onOpenGroup={openGroup}
+        />
       </div>
     </section>
   );
