@@ -2687,13 +2687,16 @@ function GroupChatWindow({
           });
         }, 2500);
       })
-      .subscribe();
+      .subscribe((status) => {
+        typingReadyRef.current = status === "SUBSCRIBED";
+      });
     typingChannelRef.current = typingCh;
 
     return () => {
       void supabase.removeChannel(ch);
       void supabase.removeChannel(typingCh);
       typingChannelRef.current = null;
+      typingReadyRef.current = false;
     };
   }, [group.id, user]);
 
@@ -2702,6 +2705,7 @@ function GroupChatWindow({
   }, [messages, typingUsers]);
 
   const sendTyping = () => {
+    if (!typingReadyRef.current || !typingChannelRef.current) return;
     const now = Date.now();
     if (now - lastTypingSent.current < 1500) return;
     lastTypingSent.current = now;
@@ -2709,7 +2713,7 @@ function GroupChatWindow({
       allUsers.find((u) => u.id === user?.id)?.display_name ||
       user?.user_metadata?.display_name ||
       "Someone";
-    typingChannelRef.current?.send({
+    void typingChannelRef.current.send({
       type: "broadcast",
       event: "typing",
       payload: { from: user?.id, name: meName },
