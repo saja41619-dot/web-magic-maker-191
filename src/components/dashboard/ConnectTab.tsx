@@ -885,6 +885,7 @@ function ChatWindow({
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingReadyRef = useRef(false);
   const lastTypingSent = useRef(0);
 
   const typingTimeoutRef = useRef<number | null>(null);
@@ -964,13 +965,16 @@ function ChatWindow({
           typingTimeoutRef.current = window.setTimeout(() => setPeerTyping(false), 2500);
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        typingReadyRef.current = status === "SUBSCRIBED";
+      });
     typingChannelRef.current = typingCh;
 
     return () => {
       void supabase.removeChannel(msgCh);
       void supabase.removeChannel(typingCh);
       typingChannelRef.current = null;
+      typingReadyRef.current = false;
     };
   }, [user, peer.id]);
 
@@ -1064,10 +1068,11 @@ function ChatWindow({
   }, [messages, peerTyping]);
 
   const sendTyping = () => {
+    if (!typingReadyRef.current || !typingChannelRef.current) return;
     const now = Date.now();
     if (now - lastTypingSent.current < 1500) return;
     lastTypingSent.current = now;
-    typingChannelRef.current?.send({
+    void typingChannelRef.current.send({
       type: "broadcast",
       event: "typing",
       payload: { from: user?.id },
@@ -2372,6 +2377,7 @@ function GroupChatWindow({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingReadyRef = useRef(false);
   const lastTypingSent = useRef(0);
 
   // Call State Management (for GroupChatWindow)
@@ -2681,13 +2687,16 @@ function GroupChatWindow({
           });
         }, 2500);
       })
-      .subscribe();
+      .subscribe((status) => {
+        typingReadyRef.current = status === "SUBSCRIBED";
+      });
     typingChannelRef.current = typingCh;
 
     return () => {
       void supabase.removeChannel(ch);
       void supabase.removeChannel(typingCh);
       typingChannelRef.current = null;
+      typingReadyRef.current = false;
     };
   }, [group.id, user]);
 
@@ -2696,6 +2705,7 @@ function GroupChatWindow({
   }, [messages, typingUsers]);
 
   const sendTyping = () => {
+    if (!typingReadyRef.current || !typingChannelRef.current) return;
     const now = Date.now();
     if (now - lastTypingSent.current < 1500) return;
     lastTypingSent.current = now;
@@ -2703,7 +2713,7 @@ function GroupChatWindow({
       allUsers.find((u) => u.id === user?.id)?.display_name ||
       user?.user_metadata?.display_name ||
       "Someone";
-    typingChannelRef.current?.send({
+    void typingChannelRef.current.send({
       type: "broadcast",
       event: "typing",
       payload: { from: user?.id, name: meName },
