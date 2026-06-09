@@ -2377,6 +2377,7 @@ function GroupChatWindow({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingReadyRef = useRef(false);
   const lastTypingSent = useRef(0);
 
   // Call State Management (for GroupChatWindow)
