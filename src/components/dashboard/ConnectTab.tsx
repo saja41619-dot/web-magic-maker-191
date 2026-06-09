@@ -1068,10 +1068,11 @@ function ChatWindow({
   }, [messages, peerTyping]);
 
   const sendTyping = () => {
+    if (!typingReadyRef.current || !typingChannelRef.current) return;
     const now = Date.now();
     if (now - lastTypingSent.current < 1500) return;
     lastTypingSent.current = now;
-    typingChannelRef.current?.send({
+    void typingChannelRef.current.send({
       type: "broadcast",
       event: "typing",
       payload: { from: user?.id },
