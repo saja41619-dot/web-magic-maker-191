@@ -11,6 +11,9 @@ interface Profile {
   avatar_url: string | null;
 }
 interface Group {
+  avatar_url?: string | null;
+  created_at?: string;
+  created_by?: string;
   id: string;
   name: string;
 }
