@@ -885,6 +885,7 @@ function ChatWindow({
 
   const imageInputRef = useRef<HTMLInputElement>(null);
   const typingChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingReadyRef = useRef(false);
   const lastTypingSent = useRef(0);
 
   const typingTimeoutRef = useRef<number | null>(null);
