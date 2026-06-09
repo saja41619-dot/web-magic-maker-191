@@ -965,13 +965,16 @@ function ChatWindow({
           typingTimeoutRef.current = window.setTimeout(() => setPeerTyping(false), 2500);
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        typingReadyRef.current = status === "SUBSCRIBED";
+      });
     typingChannelRef.current = typingCh;
 
     return () => {
       void supabase.removeChannel(msgCh);
       void supabase.removeChannel(typingCh);
       typingChannelRef.current = null;
+      typingReadyRef.current = false;
     };
   }, [user, peer.id]);
 
