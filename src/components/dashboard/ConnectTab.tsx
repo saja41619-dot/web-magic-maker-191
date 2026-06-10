@@ -648,7 +648,7 @@ export function ConnectTab() {
                 <MessageSquare className="h-20 w-20" style={{ color: "var(--wa-teal)" }} />
               </div>
               <h3 className="text-2xl font-light" style={{ color: "var(--wa-text)" }}>
-                Lovable Web
+                Connect Web
               </h3>
               <p className="mt-3 max-w-sm text-sm" style={{ color: "var(--wa-text-muted)" }}>
                 Send and receive messages, share files, make voice & video calls, create polls,
