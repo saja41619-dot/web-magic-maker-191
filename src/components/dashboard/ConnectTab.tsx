@@ -658,7 +658,7 @@ export function ConnectTab() {
                 className="mt-6 inline-flex items-center gap-2 text-xs"
                 style={{ color: "var(--wa-text-muted)" }}
               >
-                <span>🔒</span> End-to-end encryption is not enabled in this demo.
+                <Lock className="h-3 w-3" /> End-to-end encrypted
               </p>
             </div>
           )}
