@@ -55,6 +55,7 @@ import {
   BarChart3,
   Settings2,
   Users2,
+  Lock,
 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { toast } from "sonner";
