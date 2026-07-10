@@ -1,74 +1,62 @@
-## Phased plan — Connect-il features nadappakkal
+# Connect Chat Redesign — iMessage Blue
 
-88 features-um onnichu cheyyaan kazhiyilla (oru turn-il aakkam alla). **Category-by-category** approach edukaam. Total 9 phases.
+Redesign the Connect surface with a clean iMessage-style aesthetic. All existing features (DMs, groups, calls, status, polls, invites, etc.) stay wired — only the visual shell and layout change.
 
-### Already working in Connect (audit result)
+## Design commitments
 
-ConnectTab.tsx (3,211 lines) + chatFeatures.ts-il ee features ipo real-aayi work cheyyunnund:
+**Palette** (scoped to Connect via new `.im` wrapper, replacing `.wa` skin)
+- Background: `#ffffff` chat, `#f5f5f7` sidebar
+- Bubble mine: `#007aff` → white text
+- Bubble other: `#e9e9eb` → `#1c1c1e` text
+- Accent green (online / send): `#34c759`
+- Divider: `#d1d1d6`; muted text: `#8e8e93`
 
-- 1-to-1 chat, Group chat, Voice/Video calls (CallManager + WebRTC)
-- Reply, Forward, Edit, Delete for everyone, Reactions, Starred
-- Disappearing messages (per-chat seconds), Archive, Wallpapers
-- Polls (polls + poll_options + poll_votes tables)
-- Voice notes, Image/Video/File attachments, Typing indicators
-- Presence (online/last seen), Search messages, Draft saving
-- Group create + members, Broadcast (realtime channels)
+**Typography**
+- Headings: Space Grotesk (loaded via `<link>` in `__root.tsx`)
+- Body: DM Sans
+- Applied only inside the Connect surface
 
-### Phase order
+**Layout — Classic Split (sidebar)**
+```text
+┌──────────────────────────────────────────────────────┐
+│ 320px sidebar        │  chat pane                    │
+│ ─────────────────    │ ─────────────────────────     │
+│ profile + search     │ contact header (avatar,       │
+│ status stories row   │ name, presence, call/video)   │
+│ pinned chats         │                               │
+│ conversation list    │ message stream (rounded       │
+│ (avatar + name +     │ bubbles with tails, day       │
+│ last msg + time      │ dividers, read receipts)      │
+│ + unread pill)       │                               │
+│                      │ composer (pill input,         │
+│ bottom: new chat /   │ +, emoji, mic, arrow-up       │
+│ new group / calls    │ send in blue circle)          │
+└──────────────────────────────────────────────────────┘
+```
 
-1. **Messaging Features** (21) — *current phase*
-2. Media Sharing (12)
-3. Calling (9)
-4. Status (7)
-5. Community & Groups (9)
-6. Privacy & Security (14)
-7. Multi-Device (5)
-8. Customization (6)
-9. Channels (5)
+Mobile: sidebar full-width; opening a chat slides the pane in (existing single-pane behavior preserved).
 
----
+## Visual details
 
-## Phase 1 — Messaging Features (ee turn)
+- **Bubbles**: 18px radius, tail on last in run only, grouped bubbles tighten to 4px gap, own = blue gradient (`#007aff` → `#0a84ff`), other = light gray
+- **Sidebar rows**: 68px tall, 44px circular avatar with 2px white ring + green online dot, name in Space Grotesk 15px semibold, preview in DM Sans 13px muted, right-aligned timestamp + blue unread pill
+- **Header**: white with hairline bottom border, avatar + name + "online" / "typing…" in green, phone / video / info icons on right
+- **Composer**: rounded-full white input inside `#f5f5f7` bar, iOS-style expanding textarea, blue circular send button appears when text present
+- **Status bar**: horizontal scroll of gradient rings above chat list
+- **Empty state**: centered app icon + "Select a chat to start messaging" in Space Grotesk
 
-Audit cheythappol 21-il **14 already work cheyyunnu**. Pani cheyyaanullath **7**:
+## Technical changes
 
-| # | Feature | Status | Plan |
-|---|---|---|---|
-| 1 | Broadcast message | Stub (channels mathram) | `broadcast_lists` table use cheythu broadcast send modal — owner-il ninnu multiple recipients-leku oro DM aayi insert |
-| 2 | View once photos/videos | Stub | `direct_messages.view_once boolean` column + opened-il auto-delete attachment |
-| 3 | Pin chats | Missing | `user_chat_settings.pinned boolean` (already-ulla table-il) + sidebar-il pinned-aayavar mukalil |
-| 4 | Unread filter | Missing | Sidebar-il "Unread" tab/chip — `unread[peerId] > 0` filter |
-| 5 | GIF support | Missing | Attachment menu-il GIF picker (Tenor API or simple emoji-picker-react GIF tab) |
-| 6 | Stickers | Missing | Sticker picker modal — preset sticker pack send as image attachment |
-| 7 | Scheduled messages | Stub | `direct_messages.scheduled_for timestamptz` + client poll/edge cron send-cheyyal |
+1. **`src/styles.css`**: add new `.im` scope block (mirroring current `.wa` structure) with the iMessage tokens, bubble styles, tail pseudo-elements, row hover, composer, unread pill, scrollbar. Keep `.wa` intact but unused.
+2. **`src/routes/__root.tsx`**: add `<link>` for Space Grotesk + DM Sans (Google Fonts).
+3. **`src/components/dashboard/ConnectTab.tsx`**: swap the root `wa` className to `im`; restructure sidebar + chat header + composer JSX to the split layout above; replace WhatsApp bubble classnames with new iMessage bubble classnames. No changes to state, data, or handlers.
+4. **`src/components/dashboard/ChatBubble.tsx`**: restyle to iMessage bubble (blue/gray, tail, grouped runs).
+5. **`src/components/dashboard/StatusBar.tsx`**: light-mode rings, blue accent.
 
-**Avatar stickers** (#8 in list) — Phase 8 (Customization)-il avatar create cheyyumpol cheyyam.
+## Out of scope
+- No new features (calls, polls, invites, groups all keep current behavior)
+- No DB changes
+- No routing changes
+- `.wa` styles remain in `styles.css` (dead but harmless) unless you want them removed
 
-### Technical changes (Phase 1)
-
-**DB migration:**
-- `ALTER TABLE direct_messages ADD COLUMN view_once boolean DEFAULT false, ADD COLUMN view_once_opened_at timestamptz, ADD COLUMN scheduled_for timestamptz`
-- `ALTER TABLE user_chat_settings ADD COLUMN pinned boolean DEFAULT false` (already exists check cheyyanam — illenkil add)
-- Same for `group_messages` (view_once, scheduled_for)
-
-**UI changes in `src/components/dashboard/ConnectTab.tsx`:**
-- Sidebar header: "Unread" filter chip + pin sort
-- Chat list item: long-press / context menu → "Pin chat"
-- Composer attachment menu: "GIF", "Sticker", "View once" toggle, "Schedule" picker
-- Bubble: view-once eye icon + open-once viewer
-
-**New files:**
-- `src/components/dashboard/BroadcastModal.tsx` — recipients select + send
-- `src/components/dashboard/GifPicker.tsx` — Tenor search (free tier) or curated set
-- `src/components/dashboard/StickerPicker.tsx` — preset packs
-- `src/components/dashboard/ScheduleMessageDialog.tsx` — datetime picker
-
-**Scheduled send mechanism:**
-Client-side: `setInterval` checking own scheduled_for messages every 30s and inserting real message at due time. Simple, works while at-least one device online. (Server cron later if needed.)
-
-**Out of scope (Phase 1):**
-Other 8 categories — those come in next turns.
-
----
-
-Approve cheythaal Phase 1 build cheythu, pinne next phase confirm cheythu munnottu pokaam.
+Approve to build.
