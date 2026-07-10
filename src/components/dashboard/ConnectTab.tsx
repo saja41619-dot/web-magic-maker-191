@@ -1803,6 +1803,10 @@ function ChatWindow({
         className="flex-1 space-y-3 overflow-y-auto p-4 relative wa-bg-chat"
         style={chatSetting?.wallpaper ? { background: chatSetting.wallpaper } : undefined}
       >
+        <div className="mx-auto mb-2 flex max-w-md items-center justify-center gap-2 rounded-lg bg-yellow-50 px-3 py-2 text-center text-[11px] text-yellow-900 shadow-sm">
+          <Lock className="h-3 w-3 flex-shrink-0" />
+          <span>Messages are end-to-end encrypted. No one outside this chat, not even Connect, can read them.</span>
+        </div>
         {filteredMessages.length === 0 ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-sm text-muted-foreground">
