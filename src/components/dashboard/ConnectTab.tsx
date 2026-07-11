@@ -315,6 +315,37 @@ export function ConnectTab() {
     return () => window.clearInterval(i);
   }, [user]);
 
+  const deleteChat = async (kind: "dm" | "group", key: string) => {
+    if (!user) return;
+    const confirmed = window.confirm("Delete this chat permanently?");
+    if (!confirmed) return;
+
+    try {
+      await upsertChatSetting(user.id, kind, key, { deleted: true });
+      if (activePeer?.id === key && kind === "dm") {
+        setActivePeer(null);
+      }
+      if (activeGroup?.id === key && kind === "group") {
+        setActiveGroup(null);
+      }
+      setUnread((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setLastMessages((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      await reloadSettings();
+      toast.success("Chat deleted");
+    } catch (err) {
+      console.error("Delete chat error:", err);
+      toast.error("Couldn't delete chat");
+    }
+  };
+
   const sidebarItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     type Item =
@@ -335,6 +366,8 @@ export function ConnectTab() {
       })),
     ];
     const visible = combined.filter((item) => {
+      const isDeleted = item.setting?.deleted ?? false;
+      if (isDeleted) return false;
       const isArch = item.setting?.archived ?? false;
       if (showArchived !== isArch) return false;
       if (unreadOnly && item.type === "direct" && (unread[item.data.id] ?? 0) === 0) return false;
@@ -358,16 +391,10 @@ export function ConnectTab() {
       const tb = lastMessages[b.id]?.created_at ?? "";
       return tb.localeCompare(ta);
     });
-    if (!q) return sorted;
-    return sorted.filter((u) => (u.display_name ?? "").toLowerCase().includes(q));
-  }, [users, search, lastMessages]);
-
-  const openPeer = (p: Profile) => {
-    setActivePeer(p);
-    setUnread((u) => ({ ...u, [p.id]: 0 }));
-    setActiveGroup(null);
-  };
-
+    const visible = sorted.filter((u) => !(chatSettings[`dm:${u.id}`]?.deleted ?? false));
+    if (!q) return visible;
+    return visible.filter((u) => (u.display_name ?? "").toLowerCase().includes(q));
+  }, [users, search, lastMessages, chatSettings]);
   const openGroup = (g: ChatGroup) => {
     setActiveGroup(g);
     setActivePeer(null);
@@ -536,6 +563,7 @@ export function ConnectTab() {
                             : new Date(Date.now() + 8 * 3600_000).toISOString(),
                         })
                       }
+                      onDelete={() => void deleteChat(kind, key)}
                       avatar={
                         <div className="relative">
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-base font-bold text-primary-foreground">
@@ -581,6 +609,7 @@ export function ConnectTab() {
                             : new Date(Date.now() + 8 * 3600_000).toISOString(),
                         })
                       }
+                      onDelete={() => void deleteChat(kind, key)}
                       avatar={
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary">
                           <Users className="h-6 w-6" />
@@ -708,6 +737,7 @@ function ChatRow({
   onTogglePin,
   onToggleArchive,
   onToggleMute,
+  onDelete,
 }: {
   onOpen: () => void;
   active: boolean;
@@ -722,6 +752,7 @@ function ChatRow({
   onTogglePin: () => void;
   onToggleArchive: () => void;
   onToggleMute: () => void;
+  onDelete: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
@@ -793,6 +824,15 @@ function ChatRow({
             className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
           >
             <Archive className="h-4 w-4" /> {isArchived ? "Unarchive" : "Archive"}
+          </button>
+          <button
+            onClick={() => {
+              onDelete();
+              setMenuOpen(false);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-destructive hover:bg-secondary"
+          >
+            <Trash2 className="h-4 w-4" /> Delete chat
           </button>
         </div>
       )}
