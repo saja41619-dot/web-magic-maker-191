@@ -834,6 +834,7 @@ function ChatWindow({
   const [viewOnceArmed, setViewOnceArmed] = useState(false);
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [showLiveLocationMenu, setShowLiveLocationMenu] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const liveLocationRef = useRef<{ messageId: string; watchId: number; until: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
