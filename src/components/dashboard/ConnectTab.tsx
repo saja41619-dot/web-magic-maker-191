@@ -1937,141 +1937,91 @@ function ChatWindow({
           >
             {showEmoji ? <X className="h-5 w-5" /> : <Smile className="h-5 w-5" />}
           </button>
-          <button
-            type="button"
-            onClick={() => imageInputRef.current?.click()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Image"
-          >
-            <ImageIcon className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="File"
-          >
-            <Paperclip className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowGifPicker(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="GIF"
-            title="GIF"
-          >
-            <Film className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowStickerPicker(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Sticker"
-            title="Sticker"
-          >
-            <StickerIcon className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewOnceArmed((v) => !v)}
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
-              viewOnceArmed
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-            )}
-            aria-label="View once"
-            title={viewOnceArmed ? "View once: ON (next message)" : "View once"}
-          >
-            <Eye className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowScheduleDialog(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Schedule"
-            title="Schedule message"
-          >
-            <CalendarClock className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowDisappearingOptions(!showDisappearingOptions)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Disappearing"
-          >
-            <Timer className="h-5 w-5" />
-          </button>
-
-          {/* Phase 2: media sharing */}
-          <button
-            type="button"
-            onClick={() => videoInputRef.current?.click()}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Video"
-            title="Send HD video"
-          >
-            <VideoIcon className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowContactPicker(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Share contact"
-            title="Share a contact"
-          >
-            <ContactIcon className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={sendLocation}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Share location"
-            title="Share location"
-          >
-            <MapPin className="h-5 w-5" />
-          </button>
           <div className="relative">
             <button
               type="button"
-              onClick={() => {
-                if (liveLocationRef.current) stopLiveLocation();
-                else setShowLiveLocationMenu((v) => !v);
-              }}
+              onClick={() => setShowAttachMenu((v) => !v)}
               className={cn(
                 "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
-                liveLocationRef.current
-                  ? "bg-destructive text-destructive-foreground"
+                showAttachMenu
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground",
               )}
-              aria-label="Live location"
-              title={liveLocationRef.current ? "Stop live location" : "Share live location"}
+              aria-label="Attach"
+              title="Attach"
             >
-              <Radio className="h-5 w-5" />
+              <Plus className={cn("h-5 w-5 transition-transform", showAttachMenu && "rotate-45")} />
             </button>
-            {showLiveLocationMenu && !liveLocationRef.current && (
-              <div className="absolute bottom-12 left-0 z-20 w-44 rounded-md border border-border bg-card p-1 shadow-lg">
-                {[15, 60, 480].map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => startLiveLocation(m)}
-                    className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-secondary"
-                  >
-                    Share for {m >= 60 ? `${m / 60} h` : `${m} min`}
-                  </button>
-                ))}
+            {showAttachMenu && (
+              <div className="absolute bottom-12 left-0 z-20 w-64 rounded-2xl border border-border bg-card p-2 shadow-xl">
+                <div className="grid grid-cols-4 gap-1">
+                  {[
+                    { icon: ImageIcon, label: "Photo", onClick: () => imageInputRef.current?.click() },
+                    { icon: VideoIcon, label: "Video", onClick: () => videoInputRef.current?.click() },
+                    { icon: Paperclip, label: "File", onClick: () => fileInputRef.current?.click() },
+                    { icon: Film, label: "GIF", onClick: () => setShowGifPicker(true) },
+                    { icon: StickerIcon, label: "Sticker", onClick: () => setShowStickerPicker(true) },
+                    { icon: Eye, label: "View once", onClick: () => setViewOnceArmed((v) => !v), active: viewOnceArmed },
+                    { icon: CalendarClock, label: "Schedule", onClick: () => setShowScheduleDialog(true) },
+                    { icon: Timer, label: "Timer", onClick: () => setShowDisappearingOptions(!showDisappearingOptions) },
+                    { icon: ContactIcon, label: "Contact", onClick: () => setShowContactPicker(true) },
+                    { icon: MapPin, label: "Location", onClick: sendLocation },
+                    {
+                      icon: Radio,
+                      label: liveLocationRef.current ? "Stop live" : "Live",
+                      onClick: () => {
+                        if (liveLocationRef.current) stopLiveLocation();
+                        else setShowLiveLocationMenu((v) => !v);
+                      },
+                      active: !!liveLocationRef.current,
+                    },
+                    { icon: MonitorUp, label: "Screen", onClick: startScreenShare },
+                  ].map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => {
+                        item.onClick();
+                        setShowAttachMenu(false);
+                      }}
+                      className="flex flex-col items-center justify-center gap-1 rounded-xl p-2 hover:bg-secondary"
+                    >
+                      <span
+                        className={cn(
+                          "flex h-10 w-10 items-center justify-center rounded-full",
+                          item.active
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-secondary text-foreground",
+                        )}
+                      >
+                        <item.icon className="h-5 w-5" />
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {showLiveLocationMenu && !liveLocationRef.current && (
+                  <div className="mt-2 border-t border-border pt-2">
+                    <p className="px-2 pb-1 text-[10px] font-semibold uppercase text-muted-foreground">Live location duration</p>
+                    {[15, 60, 480].map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => {
+                          startLiveLocation(m);
+                          setShowAttachMenu(false);
+                          setShowLiveLocationMenu(false);
+                        }}
+                        className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-secondary"
+                      >
+                        Share for {m >= 60 ? `${m / 60} h` : `${m} min`}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
-          <button
-            type="button"
-            onClick={startScreenShare}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-            aria-label="Screen share"
-            title="Share your screen"
-          >
-            <MonitorUp className="h-5 w-5" />
-          </button>
+
 
           <input
             ref={imageInputRef}
