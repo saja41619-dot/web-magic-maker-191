@@ -376,16 +376,16 @@ export function ConnectTab() {
   return (
     <section
       className={cn(
-        "wa overflow-hidden border-border h-full",
+        "wa h-full min-h-0 overflow-hidden border-border",
         "rounded-none border-0 shadow-none md:rounded-2xl md:border md:shadow-elegant lg:rounded-none lg:border-0 lg:shadow-none",
       )}
       style={{ background: "var(--wa-panel)" }}
     >
-      <div className="grid h-full min-h-[500px] grid-cols-1 md:grid-cols-[340px_1fr]">
+      <div className="grid h-full min-h-0 grid-cols-1 md:min-h-[500px] md:grid-cols-[340px_1fr]">
         {/* Sidebar list */}
         <aside
           className={cn(
-            "flex flex-col wa-bg-list border-r wa-divider",
+            "flex min-h-0 flex-col wa-bg-list border-r wa-divider",
             (activePeer || activeGroup) && "hidden md:flex",
           )}
         >
@@ -600,7 +600,10 @@ export function ConnectTab() {
 
         {/* Chat window */}
         <div
-          className={cn("flex flex-col min-w-0", !(activePeer || activeGroup) && "hidden md:flex")}
+          className={cn(
+            "flex min-h-0 min-w-0 flex-col",
+            !(activePeer || activeGroup) && "hidden md:flex",
+          )}
         >
           {activePeer ? (
             <ChatWindow
@@ -1784,7 +1787,7 @@ function ChatWindow({
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 space-y-3 overflow-y-auto p-4 relative wa-bg-chat"
+        className="relative min-h-0 flex-1 space-y-3 overflow-y-auto p-4 wa-bg-chat"
         style={chatSetting?.wallpaper ? { background: chatSetting.wallpaper } : undefined}
       >
         <div className="mx-auto mb-2 flex max-w-md items-center justify-center gap-2 rounded-lg bg-yellow-50 px-3 py-2 text-center text-[11px] text-yellow-900 shadow-sm">
@@ -1854,7 +1857,10 @@ function ChatWindow({
       </div>
 
       {/* Composer */}
-      <div className="relative border-t border-border bg-card/80 backdrop-blur-md p-4 space-y-3">
+      <div
+        className="relative shrink-0 space-y-3 border-t border-border bg-card/80 p-3 backdrop-blur-md sm:p-4"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
         {/* Reply Preview */}
         {replyingTo && (
           <div className="flex items-center gap-2 bg-primary/10 p-2 rounded-lg">
@@ -2079,7 +2085,7 @@ function ChatWindow({
             }}
             placeholder={editingId ? "Edit message…" : "Type a message…"}
             rows={1}
-            className="max-h-32 min-h-10 flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
+            className="max-h-32 min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
           />
 
           {text.trim() || editingId ? (
@@ -2860,7 +2866,7 @@ function GroupChatWindow({
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 wa-bg-chat">
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 wa-bg-chat">
         <div className="mx-auto mb-2 flex max-w-md items-center justify-center gap-2 rounded-lg bg-yellow-50 px-3 py-2 text-center text-[11px] text-yellow-900 shadow-sm">
           <Lock className="h-3 w-3 flex-shrink-0" />
           <span>Messages are end-to-end encrypted. Only members of this group can read them.</span>
@@ -3043,7 +3049,10 @@ function GroupChatWindow({
       )}
 
       {/* Composer */}
-      <div className="p-3 border-t border-border bg-card/80 backdrop-blur-md">
+      <div
+        className="shrink-0 border-t border-border bg-card/80 p-3 backdrop-blur-md"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
         {showEmoji && (
           <div className="mb-2">
             <EmojiPicker
@@ -3118,7 +3127,7 @@ function GroupChatWindow({
               }
             }}
             placeholder="Type a message…"
-            className="flex-1 bg-background border border-border rounded-full px-4 py-2.5 text-sm outline-none focus:border-primary"
+            className="min-w-0 flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
           />
           {text.trim() ? (
             <button
