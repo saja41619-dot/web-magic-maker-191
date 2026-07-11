@@ -65,6 +65,12 @@ import { usePresenceHeartbeat } from "@/lib/usePresence";
 import { CallManager, CallState, CallType } from "@/lib/callManager";
 import { CallUI } from "@/components/CallUI";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { NewGroupModal } from "./NewGroupModal";
 import { StatusBar } from "./StatusBar";
 import { WhatsAppFeaturesHub } from "./WhatsAppFeaturesHub";
