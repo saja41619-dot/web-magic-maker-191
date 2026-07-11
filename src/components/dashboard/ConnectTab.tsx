@@ -705,6 +705,7 @@ function ChatRow({
   onTogglePin,
   onToggleArchive,
   onToggleMute,
+  onDelete,
 }: {
   onOpen: () => void;
   active: boolean;
@@ -719,6 +720,7 @@ function ChatRow({
   onTogglePin: () => void;
   onToggleArchive: () => void;
   onToggleMute: () => void;
+  onDelete: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
