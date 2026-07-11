@@ -217,6 +217,55 @@ export function ConnectTab() {
     await reloadSettings();
   };
 
+  const deleteChat = async (kind: "dm" | "group", key: string) => {
+    if (!user) return;
+    const ok = window.confirm(
+      "Permanently delete this chat and all its messages? This cannot be undone.",
+    );
+    if (!ok) return;
+    try {
+      if (kind === "dm") {
+        await supabase
+          .from("direct_messages")
+          .delete()
+          .or(
+            `and(sender_id.eq.${user.id},recipient_id.eq.${key}),and(sender_id.eq.${key},recipient_id.eq.${user.id})`,
+          );
+        if (activePeer?.id === key) setActivePeer(null);
+      } else {
+        await supabase.from("group_messages").delete().eq("group_id", key);
+        await supabase
+          .from("group_members")
+          .delete()
+          .eq("group_id", key)
+          .eq("user_id", user.id);
+        if (activeGroup?.id === key) setActiveGroup(null);
+      }
+      await supabase
+        .from("user_chat_settings")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("chat_kind", kind)
+        .eq("chat_key", key);
+      setLastMessages((prev) => {
+        const n = { ...prev };
+        delete n[key];
+        return n;
+      });
+      setUnread((prev) => {
+        const n = { ...prev };
+        delete n[key];
+        return n;
+      });
+      await reloadSettings();
+      toast.success("Chat deleted");
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not delete chat");
+    }
+  };
+
+
   const loadData = async () => {
     if (!user) return;
     setLoading(true);
@@ -529,6 +578,7 @@ export function ConnectTab() {
                       onToggleArchive={() =>
                         updateSetting(kind, key, { archived: !setting?.archived })
                       }
+                      onDelete={() => deleteChat(kind, key)}
                       onToggleMute={() =>
                         updateSetting(kind, key, {
                           muted_until: isMuted
@@ -574,6 +624,7 @@ export function ConnectTab() {
                       onToggleArchive={() =>
                         updateSetting(kind, key, { archived: !setting?.archived })
                       }
+                      onDelete={() => deleteChat(kind, key)}
                       onToggleMute={() =>
                         updateSetting(kind, key, {
                           muted_until: isMuted
@@ -705,6 +756,7 @@ function ChatRow({
   onTogglePin,
   onToggleArchive,
   onToggleMute,
+  onDelete,
 }: {
   onOpen: () => void;
   active: boolean;
@@ -719,6 +771,7 @@ function ChatRow({
   onTogglePin: () => void;
   onToggleArchive: () => void;
   onToggleMute: () => void;
+  onDelete: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
@@ -790,6 +843,15 @@ function ChatRow({
             className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
           >
             <Archive className="h-4 w-4" /> {isArchived ? "Unarchive" : "Archive"}
+          </button>
+          <button
+            onClick={() => {
+              onDelete();
+              setMenuOpen(false);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" /> Delete chat
           </button>
         </div>
       )}
