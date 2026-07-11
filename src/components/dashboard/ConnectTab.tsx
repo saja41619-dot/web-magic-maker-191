@@ -315,37 +315,6 @@ export function ConnectTab() {
     return () => window.clearInterval(i);
   }, [user]);
 
-  const deleteChat = async (kind: "dm" | "group", key: string) => {
-    if (!user) return;
-    const confirmed = window.confirm("Delete this chat permanently?");
-    if (!confirmed) return;
-
-    try {
-      await upsertChatSetting(user.id, kind, key, { deleted: true });
-      if (activePeer?.id === key && kind === "dm") {
-        setActivePeer(null);
-      }
-      if (activeGroup?.id === key && kind === "group") {
-        setActiveGroup(null);
-      }
-      setUnread((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      setLastMessages((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
-      await reloadSettings();
-      toast.success("Chat deleted");
-    } catch (err) {
-      console.error("Delete chat error:", err);
-      toast.error("Couldn't delete chat");
-    }
-  };
-
   const sidebarItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     type Item =
@@ -366,8 +335,6 @@ export function ConnectTab() {
       })),
     ];
     const visible = combined.filter((item) => {
-      const isDeleted = item.setting?.deleted ?? false;
-      if (isDeleted) return false;
       const isArch = item.setting?.archived ?? false;
       if (showArchived !== isArch) return false;
       if (unreadOnly && item.type === "direct" && (unread[item.data.id] ?? 0) === 0) return false;
@@ -391,10 +358,16 @@ export function ConnectTab() {
       const tb = lastMessages[b.id]?.created_at ?? "";
       return tb.localeCompare(ta);
     });
-    const visible = sorted.filter((u) => !(chatSettings[`dm:${u.id}`]?.deleted ?? false));
-    if (!q) return visible;
-    return visible.filter((u) => (u.display_name ?? "").toLowerCase().includes(q));
-  }, [users, search, lastMessages, chatSettings]);
+    if (!q) return sorted;
+    return sorted.filter((u) => (u.display_name ?? "").toLowerCase().includes(q));
+  }, [users, search, lastMessages]);
+
+  const openPeer = (p: Profile) => {
+    setActivePeer(p);
+    setUnread((u) => ({ ...u, [p.id]: 0 }));
+    setActiveGroup(null);
+  };
+
   const openGroup = (g: ChatGroup) => {
     setActiveGroup(g);
     setActivePeer(null);
@@ -403,16 +376,16 @@ export function ConnectTab() {
   return (
     <section
       className={cn(
-        "wa h-full min-h-0 overflow-hidden border-border",
+        "wa overflow-hidden border-border h-full",
         "rounded-none border-0 shadow-none md:rounded-2xl md:border md:shadow-elegant lg:rounded-none lg:border-0 lg:shadow-none",
       )}
       style={{ background: "var(--wa-panel)" }}
     >
-      <div className="grid h-full min-h-0 grid-cols-1 md:min-h-[500px] md:grid-cols-[340px_1fr]">
+      <div className="grid h-full min-h-[500px] grid-cols-1 md:grid-cols-[340px_1fr]">
         {/* Sidebar list */}
         <aside
           className={cn(
-            "flex min-h-0 flex-col wa-bg-list border-r wa-divider",
+            "flex flex-col wa-bg-list border-r wa-divider",
             (activePeer || activeGroup) && "hidden md:flex",
           )}
         >
@@ -563,7 +536,6 @@ export function ConnectTab() {
                             : new Date(Date.now() + 8 * 3600_000).toISOString(),
                         })
                       }
-                      onDelete={() => void deleteChat(kind, key)}
                       avatar={
                         <div className="relative">
                           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-primary text-base font-bold text-primary-foreground">
@@ -609,7 +581,6 @@ export function ConnectTab() {
                             : new Date(Date.now() + 8 * 3600_000).toISOString(),
                         })
                       }
-                      onDelete={() => void deleteChat(kind, key)}
                       avatar={
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-primary">
                           <Users className="h-6 w-6" />
@@ -629,10 +600,7 @@ export function ConnectTab() {
 
         {/* Chat window */}
         <div
-          className={cn(
-            "flex min-h-0 min-w-0 flex-col",
-            !(activePeer || activeGroup) && "hidden md:flex",
-          )}
+          className={cn("flex flex-col min-w-0", !(activePeer || activeGroup) && "hidden md:flex")}
         >
           {activePeer ? (
             <ChatWindow
@@ -737,7 +705,6 @@ function ChatRow({
   onTogglePin,
   onToggleArchive,
   onToggleMute,
-  onDelete,
 }: {
   onOpen: () => void;
   active: boolean;
@@ -752,7 +719,6 @@ function ChatRow({
   onTogglePin: () => void;
   onToggleArchive: () => void;
   onToggleMute: () => void;
-  onDelete: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
@@ -824,15 +790,6 @@ function ChatRow({
             className="flex w-full items-center gap-2 px-3 py-2 hover:bg-secondary"
           >
             <Archive className="h-4 w-4" /> {isArchived ? "Unarchive" : "Archive"}
-          </button>
-          <button
-            onClick={() => {
-              onDelete();
-              setMenuOpen(false);
-            }}
-            className="flex w-full items-center gap-2 px-3 py-2 text-destructive hover:bg-secondary"
-          >
-            <Trash2 className="h-4 w-4" /> Delete chat
           </button>
         </div>
       )}
@@ -1827,7 +1784,7 @@ function ChatWindow({
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="relative min-h-0 flex-1 space-y-3 overflow-y-auto p-4 wa-bg-chat"
+        className="flex-1 space-y-3 overflow-y-auto p-4 relative wa-bg-chat"
         style={chatSetting?.wallpaper ? { background: chatSetting.wallpaper } : undefined}
       >
         <div className="mx-auto mb-2 flex max-w-md items-center justify-center gap-2 rounded-lg bg-yellow-50 px-3 py-2 text-center text-[11px] text-yellow-900 shadow-sm">
@@ -1897,10 +1854,7 @@ function ChatWindow({
       </div>
 
       {/* Composer */}
-      <div
-        className="relative shrink-0 space-y-3 border-t border-border bg-card/80 p-3 backdrop-blur-md sm:p-4"
-        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-      >
+      <div className="relative border-t border-border bg-card/80 backdrop-blur-md p-4 space-y-3">
         {/* Reply Preview */}
         {replyingTo && (
           <div className="flex items-center gap-2 bg-primary/10 p-2 rounded-lg">
@@ -2125,7 +2079,7 @@ function ChatWindow({
             }}
             placeholder={editingId ? "Edit message…" : "Type a message…"}
             rows={1}
-            className="max-h-32 min-h-10 min-w-0 flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
+            className="max-h-32 min-h-10 flex-1 resize-none rounded-2xl border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
           />
 
           {text.trim() || editingId ? (
@@ -2906,7 +2860,7 @@ function GroupChatWindow({
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 wa-bg-chat">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 wa-bg-chat">
         <div className="mx-auto mb-2 flex max-w-md items-center justify-center gap-2 rounded-lg bg-yellow-50 px-3 py-2 text-center text-[11px] text-yellow-900 shadow-sm">
           <Lock className="h-3 w-3 flex-shrink-0" />
           <span>Messages are end-to-end encrypted. Only members of this group can read them.</span>
@@ -3089,10 +3043,7 @@ function GroupChatWindow({
       )}
 
       {/* Composer */}
-      <div
-        className="shrink-0 border-t border-border bg-card/80 p-3 backdrop-blur-md"
-        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-      >
+      <div className="p-3 border-t border-border bg-card/80 backdrop-blur-md">
         {showEmoji && (
           <div className="mb-2">
             <EmojiPicker
@@ -3167,7 +3118,7 @@ function GroupChatWindow({
               }
             }}
             placeholder="Type a message…"
-            className="min-w-0 flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
+            className="flex-1 bg-background border border-border rounded-full px-4 py-2.5 text-sm outline-none focus:border-primary"
           />
           {text.trim() ? (
             <button

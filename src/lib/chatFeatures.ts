@@ -7,7 +7,6 @@ export interface ChatSetting {
   chat_key: string;
   pinned: boolean;
   archived: boolean;
-  deleted: boolean;
   muted_until: string | null;
   wallpaper: string | null;
   disappearing_seconds: number | null;
