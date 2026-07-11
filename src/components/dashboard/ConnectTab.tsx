@@ -41,6 +41,7 @@ import {
   VolumeX,
   Sparkles,
   UserPlus,
+  Plus,
   Megaphone,
   Eye,
   CalendarClock,
