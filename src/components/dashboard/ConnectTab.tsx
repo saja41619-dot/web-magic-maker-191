@@ -389,54 +389,6 @@ export function ConnectTab() {
             </h2>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setShowNewGroupModal(true)}
-                className="wa-icon-btn"
-                title="New group"
-                aria-label="New group"
-              >
-                <Users className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setShowBroadcastModal(true)}
-                className="wa-icon-btn"
-                title="New broadcast"
-                aria-label="New broadcast"
-              >
-                <Megaphone className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setShowCallHistory(true)}
-                className="wa-icon-btn"
-                title="Call history"
-                aria-label="Call history"
-              >
-                <History className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setShowCommunities(true)}
-                className="wa-icon-btn"
-                title="Communities"
-                aria-label="Communities"
-              >
-                <Users2 className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setShowAdvancedSettings(true)}
-                className="wa-icon-btn"
-                title="Advanced settings"
-                aria-label="Advanced settings"
-              >
-                <Settings2 className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="wa-icon-btn"
-                title="Invite user"
-                aria-label="Invite user"
-              >
-                <UserPlus className="h-5 w-5" />
-              </button>
-              <button
                 onClick={() => setShowGlobalSearch(true)}
                 className="wa-icon-btn"
                 title="Search all chats"
@@ -460,9 +412,33 @@ export function ConnectTab() {
               >
                 <Sparkles className="h-5 w-5" />
               </button>
-              <button className="wa-icon-btn" title="More" aria-label="More">
-                <MoreVertical className="h-5 w-5" />
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="wa-icon-btn" title="More" aria-label="More">
+                    <MoreVertical className="h-5 w-5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuItem onClick={() => setShowNewGroupModal(true)}>
+                    <Users className="h-4 w-4 mr-2" /> New group
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowBroadcastModal(true)}>
+                    <Megaphone className="h-4 w-4 mr-2" /> New broadcast
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowCallHistory(true)}>
+                    <History className="h-4 w-4 mr-2" /> Call history
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowCommunities(true)}>
+                    <Users2 className="h-4 w-4 mr-2" /> Communities
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowAdvancedSettings(true)}>
+                    <Settings2 className="h-4 w-4 mr-2" /> Advanced settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowInviteModal(true)}>
+                    <UserPlus className="h-4 w-4 mr-2" /> Invite user
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
