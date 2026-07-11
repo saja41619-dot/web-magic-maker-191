@@ -844,6 +844,15 @@ function ChatRow({
           >
             <Archive className="h-4 w-4" /> {isArchived ? "Unarchive" : "Archive"}
           </button>
+          <button
+            onClick={() => {
+              onDelete();
+              setMenuOpen(false);
+            }}
+            className="flex w-full items-center gap-2 px-3 py-2 text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 className="h-4 w-4" /> Delete chat
+          </button>
         </div>
       )}
     </div>
