@@ -578,6 +578,7 @@ export function ConnectTab() {
                       onToggleArchive={() =>
                         updateSetting(kind, key, { archived: !setting?.archived })
                       }
+                      onDelete={() => deleteChat(kind, key)}
                       onToggleMute={() =>
                         updateSetting(kind, key, {
                           muted_until: isMuted
